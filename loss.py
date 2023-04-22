@@ -3,9 +3,11 @@ import torch.nn.functional as F
 from torch import nn
 from math import sqrt
 from utils import so3
-from losses.chamfer_loss import chamfer_distance
+# from losses.chamfer_loss import chamfer_distance
 from scipy.spatial.transform import Rotation
 import numpy as np
+
+from neuralnet_pytorch.metrics import chamfer_loss
     
 class Photo_Loss(nn.Module):
     def __init__(self,scale=1.0,reduction='mean'):
@@ -36,6 +38,7 @@ class ChamferDistanceLoss(nn.Module):
     def forward(self, template, source):
         p0 = template/self.scale
         p1 = source/self.scale
+        return chamfer_loss(p0, p1, reduce=self.reduction)
         if self.reduction == 'none':
             return chamfer_distance(p0, p1)
         elif self.reduction == 'mean':

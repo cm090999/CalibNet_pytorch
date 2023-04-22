@@ -82,7 +82,7 @@ if __name__ == "__main__":
     with open(args.config,'r')as f:
         CONFIG : dict= yaml.load(f,yaml.SafeLoader)
     if os.path.exists(args.pretrained) and os.path.isfile(args.pretrained):
-        chkpt = torch.load(args.pretrained)
+        chkpt = torch.load(args.pretrained, map_location=args.device)
         CONFIG.update(chkpt['config'])
         update_args = ['resize_ratio','name','scale']
         for up_arg in update_args:
@@ -92,10 +92,22 @@ if __name__ == "__main__":
     print_highlight('args have been received, please wait for dataloader...')
     
     test_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
-    test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
-                                     skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-                                     pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-                                     extend_ratio=CONFIG['dataset']['extend_ratio'])
+
+    # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
+    #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
+    #                                  pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
+    #                                  extend_ratio=CONFIG['dataset']['extend_ratio'])
+
+    test_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+                                    batch_size=args.batch_size,
+                                    seqs=test_split,
+                                    cam_id=CONFIG['dataset']['cam_id'],
+                                    meta_json='data_len.json',
+                                    skip_frame=args.skip_frame,
+                                    voxel_size=CONFIG['dataset']['voxel_size'],
+                                    pcd_sample_num=args.pcd_sample,
+                                    resize_ratio=args.resize_ratio,
+                                    extend_intran=CONFIG['dataset']['extend_ratio'])
     os.makedirs(args.res_dir,exist_ok=True)
     test_perturb_file = os.path.join(args.checkpoint_dir,"test_seq.csv")
     test_length = len(test_dataset)
