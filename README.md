@@ -1,3 +1,17 @@
+## Quick Setup
+Clone this repository and download the weights (as instructed below). Create a virtual environment:
+```python3.10 -m venv .venvCalib```
+
+Activate the virtual environment:
+```source .venvCalib/bin/activate```
+
+Install the dependecies:
+```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio```
+
+Pytorch:
+```pip3 install torch torchvision torchaudio```
+
+
 # CalibNet_pytorch: Pytorch implementation of CalibNet
 
 original github: [https://github.com/epiception/CalibNet](https://github.com/epiception/CalibNet)

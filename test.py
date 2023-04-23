@@ -78,7 +78,10 @@ if __name__ == "__main__":
     if not torch.cuda.is_available():
         args.device = 'cpu'
         print_warning('CUDA is not available, use CPU to run')
+    else:
+        args.device = 'cuda:0'
     os.makedirs(args.log_dir,exist_ok=True)
+    print('Using device: ' + str(args.device))
     with open(args.config,'r')as f:
         CONFIG : dict= yaml.load(f,yaml.SafeLoader)
     if os.path.exists(args.pretrained) and os.path.isfile(args.pretrained):
