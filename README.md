@@ -11,6 +11,11 @@ Install the dependecies:
 Pytorch:
 ```pip3 install torch torchvision torchaudio```
 
+A reduced dataset:
+```https://polybox.ethz.ch/index.php/s/RNxImcBiUB1r3gX```
+
+Run Test:
+```python test.py --inner_iter=1 --pretrained=./checkpoint/cam2_oneiter_best.pth --skip_frame=1 --pcd_sample=-1 --num_workers=4```
 
 # CalibNet_pytorch: Pytorch implementation of CalibNet
 

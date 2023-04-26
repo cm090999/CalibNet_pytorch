@@ -96,6 +96,9 @@ if __name__ == "__main__":
     
     test_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
 
+    # TMP Fix
+    test_split = ['00']
+
     # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
     #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
     #                                  pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
@@ -131,7 +134,13 @@ if __name__ == "__main__":
                 perturb_arr[i,:] = transform.generate_transform().cpu().numpy()
             np.savetxt(test_perturb_file,perturb_arr,delimiter=',')
             print_highlight('Validation perturb file rewritten.')
+            
     test_dataset = KITTI_perturb(test_dataset,args.max_deg,args.max_tran,args.mag_randomly,
                                 pooling_size=CONFIG['dataset']['pooling'],file=test_perturb_file)
+    print('Finished creating test dataset')
+    
     test_dataloader = DataLoader(test_dataset,args.batch_size,num_workers=args.num_workers,pin_memory=args.pin_memory)
+    print('Finished loading test dataset')
+
     test(args,chkpt,test_dataloader)
+    print('Finished running inference on test dataset')
