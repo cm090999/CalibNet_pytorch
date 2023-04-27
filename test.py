@@ -80,6 +80,9 @@ if __name__ == "__main__":
         print_warning('CUDA is not available, use CPU to run')
     else:
         args.device = 'cuda:0'
+
+    args.device = 'cpu'
+
     os.makedirs(args.log_dir,exist_ok=True)
     print('Using device: ' + str(args.device))
     with open(args.config,'r')as f:
@@ -97,7 +100,7 @@ if __name__ == "__main__":
     test_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
 
     # TMP Fix
-    test_split = ['00']
+    test_split = ['11']
 
     # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
     #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
