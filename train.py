@@ -19,14 +19,14 @@ def options():
     parser = argparse.ArgumentParser()
     # dataset
     parser.add_argument("--config",type=str,default='config.yml')
-    parser.add_argument("--dataset_path",type=str,default='data/')
-    parser.add_argument("--skip_frame",type=int,default=5,help='skip frame of dataset')
+    parser.add_argument("--dataset_path",type=str,default='KITTI_Odometry_Full/')
+    parser.add_argument("--skip_frame",type=int,default=10,help='skip frame of dataset')
     parser.add_argument("--pcd_sample",type=int,default=20000)
     parser.add_argument("--max_deg",type=float,default=10)  # 10deg in each axis  (see the paper)
     parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
     # dataloader
-    parser.add_argument("--batch_size",type=int,default=8)
+    parser.add_argument("--batch_size",type=int,default=4)
     parser.add_argument("--num_workers",type=int,default=12)
     parser.add_argument("--pin_memory",type=bool,default=True,help='set it to False if your CPU memory is insufficient')
     # schedule
@@ -36,7 +36,7 @@ def options():
     parser.add_argument("--epoch",type=int,default=100)
     parser.add_argument("--log_dir",default='log/')
     parser.add_argument("--checkpoint_dir",type=str,default="checkpoint/")
-    parser.add_argument("--name",type=str,default='cam2_oneter')
+    parser.add_argument("--name",type=str,default='cam2_oneiter')
     parser.add_argument("--optim",type=str,default='sgd',choices=['sgd','adam'])
     parser.add_argument("--lr0",type=float,default=5e-4)
     parser.add_argument("--momentum",type=float,default=0.9)
@@ -242,17 +242,35 @@ if __name__ == "__main__":
     train_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['train']]
     val_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['val']]
     # dataset
-    train_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,train_split,CONFIG['dataset']['cam_id'],
-                                     skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-                                     pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-                                     extend_ratio=CONFIG['dataset']['extend_ratio'])
-    train_dataset = KITTI_perturb(train_dataset,args.max_deg,args.max_tran,args.mag_randomly,
-                                  pooling_size=CONFIG['dataset']['pooling'])
+    train_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+                                    batch_size=args.batch_size,
+                                    seqs=train_split,
+                                    cam_id=CONFIG['dataset']['cam_id'],
+                                    meta_json='data_len.json',
+                                    skip_frame=args.skip_frame,
+                                    voxel_size=CONFIG['dataset']['voxel_size'],
+                                    pcd_sample_num=args.pcd_sample,
+                                    resize_ratio=args.resize_ratio,
+                                    extend_intran=CONFIG['dataset']['extend_ratio'])
     
-    val_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,val_split,CONFIG['dataset']['cam_id'],
-                                     skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-                                     pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-                                     extend_ratio=CONFIG['dataset']['extend_ratio'])
+    train_dataset = KITTI_perturb(dataset=train_dataset,
+                                  max_deg=args.max_deg,
+                                  max_tran=args.max_tran,
+                                  mag_randomly=args.mag_randomly,
+                                  pooling_size=CONFIG['dataset']['pooling'],
+                                  file=None)
+    
+    val_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+                                   batch_size=args.batch_size,
+                                   seqs=val_split,
+                                   cam_id=CONFIG['dataset']['cam_id'],
+                                   meta_json='data_len.json',
+                                   skip_frame=args.skip_frame,
+                                   voxel_size=CONFIG['dataset']['voxel_size'],
+                                   pcd_sample_num=args.pcd_sample,
+                                   resize_ratio=args.resize_ratio,
+                                   extend_intran=CONFIG['dataset']['extend_ratio'])
+    
     val_perturb_file = os.path.join(args.checkpoint_dir,"val_seq.csv")
     val_length = len(val_dataset)
     if not os.path.exists(val_perturb_file):

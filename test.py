@@ -75,13 +75,14 @@ def test(args,chkpt:dict,test_loader):
 
 if __name__ == "__main__":
     args = options()
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     if not torch.cuda.is_available():
         args.device = 'cpu'
         print_warning('CUDA is not available, use CPU to run')
     else:
         args.device = 'cuda:0'
 
-    args.device = 'cpu'
+    # args.device = 'cpu'
 
     os.makedirs(args.log_dir,exist_ok=True)
     print('Using device: ' + str(args.device))
