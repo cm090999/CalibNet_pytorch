@@ -26,8 +26,8 @@ def options():
     parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
     # dataloader
-    parser.add_argument("--batch_size",type=int,default=4)
-    parser.add_argument("--num_workers",type=int,default=12)
+    parser.add_argument("--batch_size",type=int,default=6)
+    parser.add_argument("--num_workers",type=int,default=16)
     parser.add_argument("--pin_memory",type=bool,default=True,help='set it to False if your CPU memory is insufficient')
     # schedule
     parser.add_argument("--device",type=str,default='cuda:0')
@@ -169,16 +169,17 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
                 # model(rgb_img,uncalibed_depth_img)
                 g0 = torch.eye(4).repeat(B,1,1).to(device)
-                # model.eval()
+                model.eval()
                 for _ in range(args.inner_iter):
                     twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
                     extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
                     uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
                     g0 = extran.bmm(g0)
                 dR,dT = loss_utils.geodesic_distance(g0.bmm(igt))
-                # model.train()
+                model.train()
                 loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
                 loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
+                # loss2 = loss_utils.earth_mover_distance(calibed_pcd,uncalibed_pcd)
                 loss = alpha*loss1 + beta*loss2
                 loss.backward()
                 nn.utils.clip_grad_value_(model.parameters(),args.clip_grad)
@@ -298,7 +299,7 @@ if __name__ == "__main__":
     val_drop_last = True if len(val_dataset) % args.batch_size == 1 else False
     # dataloader
     train_dataloader = DataLoader(train_dataset,args.batch_size,shuffle=False,num_workers=args.num_workers,pin_memory=args.pin_memory,drop_last=train_drop_last)
-    val_dataloder = DataLoader(val_dataset,args.batch_size,shuffle=False,num_workers=args.num_workers+8,pin_memory=args.pin_memory,drop_last=val_drop_last)
+    val_dataloder = DataLoader(val_dataset,args.batch_size,shuffle=False,num_workers=args.num_workers,pin_memory=args.pin_memory,drop_last=val_drop_last)
     
         
     train(args,chkpt,train_dataloader,val_dataloder)

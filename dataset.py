@@ -221,7 +221,7 @@ if __name__ == "__main__":
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pyplot as plt
-    base_dataset = BaseKITTIDataset('data',1,seqs=['00','01'],skip_frame=3)
+    base_dataset = BaseKITTIDataset('KITTI_Odometry_Full',1,seqs=['00','01'],skip_frame=3)
     dataset = KITTI_perturb(base_dataset,30,3)
     data = dataset[2]
     for key,value in data.items():
