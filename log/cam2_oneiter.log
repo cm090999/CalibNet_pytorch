@@ -1,210 +1,240 @@
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:22:09,425, Namespace(alpha=1.0, batch_size=8, beta=0.3, checkpoint_dir='checkpoint/', clip_grad=2.0, config='config.yml', dataset_path='data/', device='cuda:0', epoch=100, inner_iter=1, log_dir='log/', lr0=0.0005, lr_exp_decay=0.98, mag_randomly=True, max_deg=10, max_tran=0.2, momentum=0.9, name='cam2_oneiter', num_workers=12, optim='sgd', pcd_sample=20000, pin_memory=True, pretrained='', resize_ratio=[1.0, 1.0], resume='', scale=50.0, skip_frame=10, weight_decay=5e-06)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:23:34,514, Epoch 001|100, train loss:0.0566
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:23:49,305, Best model saved (Epoch 1)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:23:49,439, Evaluate loss_dR:0.078173, loss_dT:0.078845, se3_loss:0.033599
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:25:15,857, Epoch 002|100, train loss:0.0555
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:25:30,244, Best model saved (Epoch 2)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:25:30,389, Evaluate loss_dR:0.077013, loss_dT:0.077634, se3_loss:0.033106
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:26:56,126, Epoch 003|100, train loss:0.0569
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:27:11,320, Evaluate loss_dR:0.078603, loss_dT:0.077382, se3_loss:0.033322
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:28:37,444, Epoch 004|100, train loss:0.0559
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:28:52,091, Best model saved (Epoch 4)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:28:52,243, Evaluate loss_dR:0.077558, loss_dT:0.074882, se3_loss:0.032707
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:30:18,202, Epoch 005|100, train loss:0.0555
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:30:32,616, Evaluate loss_dR:0.081246, loss_dT:0.078256, se3_loss:0.034000
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:31:57,020, Epoch 006|100, train loss:0.0562
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:32:11,496, Best model saved (Epoch 6)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:32:11,652, Evaluate loss_dR:0.073022, loss_dT:0.076273, se3_loss:0.031892
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:33:35,961, Epoch 007|100, train loss:0.0565
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:33:50,342, Best model saved (Epoch 7)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:33:50,490, Evaluate loss_dR:0.067363, loss_dT:0.078862, se3_loss:0.031385
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:35:14,967, Epoch 008|100, train loss:0.0547
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:35:29,302, Evaluate loss_dR:0.073909, loss_dT:0.083145, se3_loss:0.033756
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:36:53,926, Epoch 009|100, train loss:0.0559
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:37:08,355, Best model saved (Epoch 9)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:37:08,503, Evaluate loss_dR:0.063029, loss_dT:0.080507, se3_loss:0.030843
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:38:33,013, Epoch 010|100, train loss:0.0540
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:38:47,353, Evaluate loss_dR:0.066330, loss_dT:0.085555, se3_loss:0.032583
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:40:12,120, Epoch 011|100, train loss:0.0537
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:40:26,563, Evaluate loss_dR:0.066507, loss_dT:0.079501, se3_loss:0.031294
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:41:51,269, Epoch 012|100, train loss:0.0548
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:42:05,812, Evaluate loss_dR:0.066285, loss_dT:0.081276, se3_loss:0.031685
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:43:30,373, Epoch 013|100, train loss:0.0557
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:43:44,784, Evaluate loss_dR:0.062591, loss_dT:0.080397, se3_loss:0.030880
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:45:09,454, Epoch 014|100, train loss:0.0543
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:45:23,979, Evaluate loss_dR:0.069700, loss_dT:0.080625, se3_loss:0.032121
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:46:48,455, Epoch 015|100, train loss:0.0544
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:47:02,871, Best model saved (Epoch 15)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:47:03,019, Evaluate loss_dR:0.063408, loss_dT:0.079695, se3_loss:0.030834
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:48:27,492, Epoch 016|100, train loss:0.0541
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 17:48:41,904, Best model saved (Epoch 16)
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:48:42,052, Evaluate loss_dR:0.060994, loss_dT:0.078603, se3_loss:0.030105
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:50:06,367, Epoch 017|100, train loss:0.0542
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:50:20,775, Evaluate loss_dR:0.063588, loss_dT:0.079144, se3_loss:0.030757
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:51:45,193, Epoch 018|100, train loss:0.0545
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:51:59,750, Evaluate loss_dR:0.060473, loss_dT:0.080436, se3_loss:0.030372
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:53:24,048, Epoch 019|100, train loss:0.0533
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:53:38,206, Evaluate loss_dR:0.061012, loss_dT:0.085227, se3_loss:0.031555
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:55:02,721, Epoch 020|100, train loss:0.0549
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:55:16,989, Evaluate loss_dR:0.062779, loss_dT:0.085485, se3_loss:0.031961
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:56:41,442, Epoch 021|100, train loss:0.0538
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:56:55,602, Evaluate loss_dR:0.062365, loss_dT:0.086450, se3_loss:0.032123
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:58:20,194, Epoch 022|100, train loss:0.0530
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:58:34,554, Evaluate loss_dR:0.058229, loss_dT:0.086953, se3_loss:0.031562
-[INFO]:cam2_oneiter|Train, 2022-09-27 17:59:59,021, Epoch 023|100, train loss:0.0541
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:00:13,271, Evaluate loss_dR:0.057674, loss_dT:0.086846, se3_loss:0.031383
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:01:37,730, Epoch 024|100, train loss:0.0529
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:01:52,087, Evaluate loss_dR:0.061062, loss_dT:0.085620, se3_loss:0.031739
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:03:16,619, Epoch 025|100, train loss:0.0533
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:03:31,097, Evaluate loss_dR:0.059069, loss_dT:0.088488, se3_loss:0.032024
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:04:55,599, Epoch 026|100, train loss:0.0530
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:05:10,077, Evaluate loss_dR:0.058885, loss_dT:0.090280, se3_loss:0.032343
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:06:34,420, Epoch 027|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:06:48,700, Evaluate loss_dR:0.058247, loss_dT:0.090558, se3_loss:0.032377
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:08:13,053, Epoch 028|100, train loss:0.0531
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:08:27,440, Evaluate loss_dR:0.056504, loss_dT:0.089807, se3_loss:0.031872
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:09:52,003, Epoch 029|100, train loss:0.0528
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:10:06,424, Evaluate loss_dR:0.059583, loss_dT:0.087096, se3_loss:0.031680
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:11:30,843, Epoch 030|100, train loss:0.0532
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:11:45,121, Evaluate loss_dR:0.060606, loss_dT:0.083302, se3_loss:0.031129
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:13:09,464, Epoch 031|100, train loss:0.0523
-[DEBUG]:cam2_oneiter|Train, 2022-09-27 18:13:23,596, Best model saved (Epoch 31)
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:13:23,736, Evaluate loss_dR:0.055570, loss_dT:0.081820, se3_loss:0.029795
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:14:48,059, Epoch 032|100, train loss:0.0527
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:15:02,686, Evaluate loss_dR:0.059982, loss_dT:0.084929, se3_loss:0.031307
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:16:27,237, Epoch 033|100, train loss:0.0531
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:16:41,632, Evaluate loss_dR:0.059186, loss_dT:0.087152, se3_loss:0.031647
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:18:06,212, Epoch 034|100, train loss:0.0527
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:18:20,520, Evaluate loss_dR:0.056695, loss_dT:0.087334, se3_loss:0.031331
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:19:45,061, Epoch 035|100, train loss:0.0521
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:19:59,633, Evaluate loss_dR:0.060572, loss_dT:0.089678, se3_loss:0.032501
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:21:24,158, Epoch 036|100, train loss:0.0532
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:21:38,315, Evaluate loss_dR:0.057767, loss_dT:0.087859, se3_loss:0.031514
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:23:02,790, Epoch 037|100, train loss:0.0526
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:23:17,393, Evaluate loss_dR:0.056047, loss_dT:0.088039, se3_loss:0.031331
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:24:41,610, Epoch 038|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:24:55,971, Evaluate loss_dR:0.058027, loss_dT:0.085764, se3_loss:0.031145
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:26:20,329, Epoch 039|100, train loss:0.0525
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:26:34,888, Evaluate loss_dR:0.056898, loss_dT:0.088453, se3_loss:0.031595
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:27:59,338, Epoch 040|100, train loss:0.0522
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:28:13,812, Evaluate loss_dR:0.057182, loss_dT:0.088480, se3_loss:0.031670
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:29:38,276, Epoch 041|100, train loss:0.0523
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:29:52,548, Evaluate loss_dR:0.056395, loss_dT:0.087852, se3_loss:0.031357
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:31:17,098, Epoch 042|100, train loss:0.0523
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:31:31,550, Evaluate loss_dR:0.059641, loss_dT:0.089184, se3_loss:0.032251
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:32:55,982, Epoch 043|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:33:10,492, Evaluate loss_dR:0.057937, loss_dT:0.090396, se3_loss:0.032166
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:34:35,114, Epoch 044|100, train loss:0.0522
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:34:49,446, Evaluate loss_dR:0.056425, loss_dT:0.090724, se3_loss:0.032052
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:36:13,891, Epoch 045|100, train loss:0.0523
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:36:28,448, Evaluate loss_dR:0.056071, loss_dT:0.090209, se3_loss:0.031882
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:37:52,992, Epoch 046|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:38:07,557, Evaluate loss_dR:0.057267, loss_dT:0.090419, se3_loss:0.032097
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:39:32,262, Epoch 047|100, train loss:0.0521
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:39:46,750, Evaluate loss_dR:0.056151, loss_dT:0.089752, se3_loss:0.031747
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:41:11,042, Epoch 048|100, train loss:0.0516
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:41:25,540, Evaluate loss_dR:0.056428, loss_dT:0.092146, se3_loss:0.032384
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:42:49,870, Epoch 049|100, train loss:0.0514
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:43:04,529, Evaluate loss_dR:0.055730, loss_dT:0.092219, se3_loss:0.032354
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:44:29,014, Epoch 050|100, train loss:0.0511
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:44:43,372, Evaluate loss_dR:0.055920, loss_dT:0.091406, se3_loss:0.032179
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:46:07,999, Epoch 051|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:46:22,381, Evaluate loss_dR:0.055975, loss_dT:0.091342, se3_loss:0.032169
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:47:47,027, Epoch 052|100, train loss:0.0524
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:48:01,354, Evaluate loss_dR:0.054347, loss_dT:0.091109, se3_loss:0.031833
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:49:25,785, Epoch 053|100, train loss:0.0515
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:49:39,911, Evaluate loss_dR:0.055221, loss_dT:0.092982, se3_loss:0.032396
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:51:04,513, Epoch 054|100, train loss:0.0513
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:51:18,928, Evaluate loss_dR:0.056376, loss_dT:0.091670, se3_loss:0.032301
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:52:43,264, Epoch 055|100, train loss:0.0518
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:52:57,881, Evaluate loss_dR:0.056928, loss_dT:0.092345, se3_loss:0.032504
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:54:22,243, Epoch 056|100, train loss:0.0519
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:54:36,761, Evaluate loss_dR:0.056788, loss_dT:0.093097, se3_loss:0.032666
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:56:01,119, Epoch 057|100, train loss:0.0511
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:56:15,687, Evaluate loss_dR:0.057773, loss_dT:0.092195, se3_loss:0.032664
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:57:39,973, Epoch 058|100, train loss:0.0512
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:57:54,129, Evaluate loss_dR:0.056886, loss_dT:0.094077, se3_loss:0.032937
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:59:18,573, Epoch 059|100, train loss:0.0520
-[INFO]:cam2_oneiter|Train, 2022-09-27 18:59:32,697, Evaluate loss_dR:0.055458, loss_dT:0.092946, se3_loss:0.032445
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:00:57,113, Epoch 060|100, train loss:0.0506
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:01:11,433, Evaluate loss_dR:0.056768, loss_dT:0.092446, se3_loss:0.032516
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:02:35,853, Epoch 061|100, train loss:0.0516
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:02:50,292, Evaluate loss_dR:0.057592, loss_dT:0.092369, se3_loss:0.032585
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:04:14,870, Epoch 062|100, train loss:0.0514
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:04:29,459, Evaluate loss_dR:0.057662, loss_dT:0.090539, se3_loss:0.032156
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:05:53,958, Epoch 063|100, train loss:0.0509
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:06:08,485, Evaluate loss_dR:0.056982, loss_dT:0.091708, se3_loss:0.032342
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:07:33,081, Epoch 064|100, train loss:0.0517
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:07:47,383, Evaluate loss_dR:0.056495, loss_dT:0.089803, se3_loss:0.031782
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:09:12,406, Epoch 065|100, train loss:0.0508
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:09:27,062, Evaluate loss_dR:0.056792, loss_dT:0.090740, se3_loss:0.032089
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:10:53,479, Epoch 066|100, train loss:0.0516
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:11:07,954, Evaluate loss_dR:0.055735, loss_dT:0.090935, se3_loss:0.031931
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:12:33,785, Epoch 067|100, train loss:0.0503
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:12:48,926, Evaluate loss_dR:0.056355, loss_dT:0.090881, se3_loss:0.032058
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:14:15,633, Epoch 068|100, train loss:0.0505
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:14:30,663, Evaluate loss_dR:0.057894, loss_dT:0.092603, se3_loss:0.032675
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:15:56,487, Epoch 069|100, train loss:0.0506
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:16:11,503, Evaluate loss_dR:0.059075, loss_dT:0.093971, se3_loss:0.033208
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:17:38,040, Epoch 070|100, train loss:0.0510
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:17:52,752, Evaluate loss_dR:0.056495, loss_dT:0.093533, se3_loss:0.032720
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:19:19,457, Epoch 071|100, train loss:0.0512
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:19:36,594, Evaluate loss_dR:0.056367, loss_dT:0.092168, se3_loss:0.032388
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:21:05,271, Epoch 072|100, train loss:0.0503
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:21:22,864, Evaluate loss_dR:0.056669, loss_dT:0.092378, se3_loss:0.032488
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:22:50,171, Epoch 073|100, train loss:0.0513
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:23:05,387, Evaluate loss_dR:0.059777, loss_dT:0.092557, se3_loss:0.032999
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:24:32,878, Epoch 074|100, train loss:0.0505
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:24:48,327, Evaluate loss_dR:0.057441, loss_dT:0.093381, se3_loss:0.032802
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:26:16,278, Epoch 075|100, train loss:0.0503
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:26:31,055, Evaluate loss_dR:0.055297, loss_dT:0.091423, se3_loss:0.031999
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:27:58,384, Epoch 076|100, train loss:0.0500
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:28:13,574, Evaluate loss_dR:0.056880, loss_dT:0.091937, se3_loss:0.032360
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:29:40,420, Epoch 077|100, train loss:0.0503
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:29:55,550, Evaluate loss_dR:0.057431, loss_dT:0.091883, se3_loss:0.032404
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:31:24,923, Epoch 078|100, train loss:0.0495
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:31:43,056, Evaluate loss_dR:0.056538, loss_dT:0.092605, se3_loss:0.032464
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:33:11,835, Epoch 079|100, train loss:0.0495
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:33:27,036, Evaluate loss_dR:0.058120, loss_dT:0.092941, se3_loss:0.032823
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:34:58,120, Epoch 080|100, train loss:0.0502
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:35:16,432, Evaluate loss_dR:0.057380, loss_dT:0.092931, se3_loss:0.032674
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:36:48,029, Epoch 081|100, train loss:0.0507
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:37:04,801, Evaluate loss_dR:0.058876, loss_dT:0.092723, se3_loss:0.032883
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:38:31,422, Epoch 082|100, train loss:0.0506
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:38:45,997, Evaluate loss_dR:0.056391, loss_dT:0.091619, se3_loss:0.032189
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:40:12,718, Epoch 083|100, train loss:0.0500
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:40:27,894, Evaluate loss_dR:0.059481, loss_dT:0.091629, se3_loss:0.032710
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:41:53,225, Epoch 084|100, train loss:0.0505
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:42:07,917, Evaluate loss_dR:0.056603, loss_dT:0.090170, se3_loss:0.031872
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:43:33,834, Epoch 085|100, train loss:0.0497
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:43:48,489, Evaluate loss_dR:0.056827, loss_dT:0.090653, se3_loss:0.032067
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:45:13,949, Epoch 086|100, train loss:0.0504
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:45:29,132, Evaluate loss_dR:0.057785, loss_dT:0.091017, se3_loss:0.032289
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:46:54,535, Epoch 087|100, train loss:0.0498
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:47:09,309, Evaluate loss_dR:0.057488, loss_dT:0.091505, se3_loss:0.032358
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:48:34,929, Epoch 088|100, train loss:0.0499
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:48:49,464, Evaluate loss_dR:0.058678, loss_dT:0.091127, se3_loss:0.032456
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:50:15,168, Epoch 089|100, train loss:0.0500
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:50:30,441, Evaluate loss_dR:0.060123, loss_dT:0.091169, se3_loss:0.032685
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:51:55,838, Epoch 090|100, train loss:0.0496
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:52:10,498, Evaluate loss_dR:0.057821, loss_dT:0.091974, se3_loss:0.032498
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:53:36,219, Epoch 091|100, train loss:0.0499
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:53:50,856, Evaluate loss_dR:0.058831, loss_dT:0.092461, se3_loss:0.032775
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:55:16,331, Epoch 092|100, train loss:0.0496
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:55:31,447, Evaluate loss_dR:0.058399, loss_dT:0.093185, se3_loss:0.032932
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:56:56,889, Epoch 093|100, train loss:0.0495
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:57:11,486, Evaluate loss_dR:0.060151, loss_dT:0.093297, se3_loss:0.033218
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:58:36,527, Epoch 094|100, train loss:0.0490
-[INFO]:cam2_oneiter|Train, 2022-09-27 19:58:51,235, Evaluate loss_dR:0.057754, loss_dT:0.092394, se3_loss:0.032631
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:00:16,050, Epoch 095|100, train loss:0.0493
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:00:31,039, Evaluate loss_dR:0.060517, loss_dT:0.092996, se3_loss:0.033248
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:01:55,831, Epoch 096|100, train loss:0.0490
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:02:10,742, Evaluate loss_dR:0.060062, loss_dT:0.092279, se3_loss:0.032973
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:03:36,011, Epoch 097|100, train loss:0.0497
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:03:50,734, Evaluate loss_dR:0.059919, loss_dT:0.093011, se3_loss:0.033139
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:05:15,514, Epoch 098|100, train loss:0.0500
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:05:30,105, Evaluate loss_dR:0.060280, loss_dT:0.092196, se3_loss:0.032979
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:06:54,811, Epoch 099|100, train loss:0.0499
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:07:09,737, Evaluate loss_dR:0.059549, loss_dT:0.092695, se3_loss:0.032989
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:08:34,919, Epoch 100|100, train loss:0.0493
-[INFO]:cam2_oneiter|Train, 2022-09-27 20:08:49,398, Evaluate loss_dR:0.059277, loss_dT:0.092181, se3_loss:0.032790
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:07:15,130, Namespace(config='config.yml', dataset_path='KITTI_Odometry_Full/', skip_frame=10, pcd_sample=20000, max_deg=10, max_tran=0.2, mag_randomly=True, batch_size=6, num_workers=16, pin_memory=True, device='cuda:0', resume='', pretrained='', epoch=100, log_dir='log/', checkpoint_dir='checkpoint/', name='cam2_oneiter', optim='adam', lr0=2e-05, momentum=0.9, weight_decay=5e-06, lr_exp_decay=0.98, clip_grad=2.0, scale=50.0, inner_iter=1, alpha=1.0, beta=0.3, resize_ratio=[1.0, 1.0])
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:10:09,504, Epoch 001|100, train loss:3.8858
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:11:23,280, Best model saved (Epoch 1)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:11:23,397, Evaluate loss_dR:0.060155, loss_dT:0.081954, se3_loss:0.030877
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:14:15,561, Epoch 002|100, train loss:2.8792
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:15:28,840, Best model saved (Epoch 2)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:15:28,957, Evaluate loss_dR:0.051820, loss_dT:0.080640, se3_loss:0.029012
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:18:19,108, Epoch 003|100, train loss:2.0928
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:19:32,277, Best model saved (Epoch 3)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:19:32,393, Evaluate loss_dR:0.048928, loss_dT:0.079276, se3_loss:0.028275
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:22:22,035, Epoch 004|100, train loss:1.8576
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:23:35,240, Best model saved (Epoch 4)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:23:35,355, Evaluate loss_dR:0.047260, loss_dT:0.078321, se3_loss:0.027714
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:26:26,832, Epoch 005|100, train loss:1.9756
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:27:41,014, Best model saved (Epoch 5)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:27:41,127, Evaluate loss_dR:0.048080, loss_dT:0.077178, se3_loss:0.027453
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:30:32,264, Epoch 006|100, train loss:1.6780
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:31:44,091, Best model saved (Epoch 6)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:31:44,206, Evaluate loss_dR:0.044618, loss_dT:0.075040, se3_loss:0.026419
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:34:33,645, Epoch 007|100, train loss:1.7177
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:35:46,309, Best model saved (Epoch 7)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:35:46,424, Evaluate loss_dR:0.043493, loss_dT:0.075659, se3_loss:0.026405
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:38:37,202, Epoch 008|100, train loss:1.6857
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:39:50,567, Best model saved (Epoch 8)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:39:50,684, Evaluate loss_dR:0.043782, loss_dT:0.075075, se3_loss:0.026382
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:42:43,268, Epoch 009|100, train loss:1.6215
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:43:55,585, Best model saved (Epoch 9)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:43:55,699, Evaluate loss_dR:0.042865, loss_dT:0.075366, se3_loss:0.026220
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:46:46,856, Epoch 010|100, train loss:1.6660
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:48:00,212, Best model saved (Epoch 10)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:48:00,326, Evaluate loss_dR:0.040471, loss_dT:0.074088, se3_loss:0.025524
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:50:50,085, Epoch 011|100, train loss:1.5393
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:52:03,289, Best model saved (Epoch 11)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:52:03,464, Evaluate loss_dR:0.040622, loss_dT:0.072306, se3_loss:0.025138
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:54:54,819, Epoch 012|100, train loss:1.5541
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 00:56:07,825, Best model saved (Epoch 12)
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:56:08,013, Evaluate loss_dR:0.038973, loss_dT:0.070679, se3_loss:0.024441
+[INFO]:cam2_oneiter|Train, 2023-05-09 00:59:00,529, Epoch 013|100, train loss:1.4854
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:00:13,747, Evaluate loss_dR:0.038874, loss_dT:0.072119, se3_loss:0.024732
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:03:05,431, Epoch 014|100, train loss:1.5616
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:04:18,170, Evaluate loss_dR:0.038427, loss_dT:0.071842, se3_loss:0.024641
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:07:10,342, Epoch 015|100, train loss:1.5856
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:08:23,435, Best model saved (Epoch 15)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:08:23,628, Evaluate loss_dR:0.037322, loss_dT:0.071188, se3_loss:0.024321
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:11:13,862, Epoch 016|100, train loss:1.5294
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:12:26,852, Evaluate loss_dR:0.037945, loss_dT:0.071376, se3_loss:0.024482
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:15:16,947, Epoch 017|100, train loss:1.6484
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:16:30,130, Best model saved (Epoch 17)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:16:30,314, Evaluate loss_dR:0.036822, loss_dT:0.070979, se3_loss:0.024188
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:19:19,924, Epoch 018|100, train loss:1.4332
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:20:32,965, Best model saved (Epoch 18)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:20:33,078, Evaluate loss_dR:0.036837, loss_dT:0.069429, se3_loss:0.023795
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:23:23,459, Epoch 019|100, train loss:1.4390
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:24:36,741, Evaluate loss_dR:0.037412, loss_dT:0.069315, se3_loss:0.023867
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:27:27,723, Epoch 020|100, train loss:1.4573
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:28:40,651, Evaluate loss_dR:0.037250, loss_dT:0.069487, se3_loss:0.023857
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:31:30,557, Epoch 021|100, train loss:1.3788
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:32:43,288, Evaluate loss_dR:0.036853, loss_dT:0.070045, se3_loss:0.023954
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:35:36,075, Epoch 022|100, train loss:1.3700
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:36:48,916, Best model saved (Epoch 22)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:36:49,031, Evaluate loss_dR:0.036616, loss_dT:0.068612, se3_loss:0.023534
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:39:42,151, Epoch 023|100, train loss:1.2908
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:40:55,681, Best model saved (Epoch 23)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:40:55,794, Evaluate loss_dR:0.036516, loss_dT:0.068519, se3_loss:0.023521
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:43:46,779, Epoch 024|100, train loss:1.3570
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:45:00,545, Best model saved (Epoch 24)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:45:00,663, Evaluate loss_dR:0.036985, loss_dT:0.067380, se3_loss:0.023349
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:47:52,982, Epoch 025|100, train loss:1.3346
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:49:05,460, Evaluate loss_dR:0.036306, loss_dT:0.068545, se3_loss:0.023500
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:51:57,127, Epoch 026|100, train loss:1.3192
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:53:09,768, Best model saved (Epoch 26)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:53:09,881, Evaluate loss_dR:0.036436, loss_dT:0.067608, se3_loss:0.023247
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:56:01,159, Epoch 027|100, train loss:1.3313
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 01:57:14,046, Best model saved (Epoch 27)
+[INFO]:cam2_oneiter|Train, 2023-05-09 01:57:14,161, Evaluate loss_dR:0.035398, loss_dT:0.067358, se3_loss:0.023066
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:00:05,312, Epoch 028|100, train loss:1.3537
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:01:17,909, Evaluate loss_dR:0.035624, loss_dT:0.067796, se3_loss:0.023173
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:04:10,940, Epoch 029|100, train loss:1.3209
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:05:24,241, Best model saved (Epoch 29)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:05:24,354, Evaluate loss_dR:0.035454, loss_dT:0.067240, se3_loss:0.023010
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:08:16,479, Epoch 030|100, train loss:1.4430
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:09:29,318, Evaluate loss_dR:0.035211, loss_dT:0.067855, se3_loss:0.023169
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:12:21,876, Epoch 031|100, train loss:1.2534
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:13:35,263, Best model saved (Epoch 31)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:13:35,378, Evaluate loss_dR:0.034459, loss_dT:0.067298, se3_loss:0.022933
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:16:26,029, Epoch 032|100, train loss:1.3604
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:17:39,312, Best model saved (Epoch 32)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:17:39,428, Evaluate loss_dR:0.034699, loss_dT:0.066958, se3_loss:0.022890
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:20:30,118, Epoch 033|100, train loss:1.3015
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:21:43,077, Evaluate loss_dR:0.034692, loss_dT:0.067211, se3_loss:0.022946
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:24:34,950, Epoch 034|100, train loss:1.3298
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:25:48,010, Evaluate loss_dR:0.035064, loss_dT:0.067542, se3_loss:0.023106
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:28:38,619, Epoch 035|100, train loss:1.3090
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:29:53,139, Best model saved (Epoch 35)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:29:53,306, Evaluate loss_dR:0.035459, loss_dT:0.066494, se3_loss:0.022880
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:32:45,019, Epoch 036|100, train loss:1.2809
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:33:57,578, Best model saved (Epoch 36)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:33:57,694, Evaluate loss_dR:0.034465, loss_dT:0.067009, se3_loss:0.022873
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:36:49,260, Epoch 037|100, train loss:1.2589
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:38:01,669, Evaluate loss_dR:0.035157, loss_dT:0.066991, se3_loss:0.022975
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:40:51,947, Epoch 038|100, train loss:1.2926
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:42:05,066, Evaluate loss_dR:0.034431, loss_dT:0.067953, se3_loss:0.023101
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:44:56,008, Epoch 039|100, train loss:1.3334
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:46:08,677, Evaluate loss_dR:0.034078, loss_dT:0.067455, se3_loss:0.022889
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:48:58,756, Epoch 040|100, train loss:1.2663
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:50:11,771, Best model saved (Epoch 40)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:50:11,885, Evaluate loss_dR:0.034017, loss_dT:0.067014, se3_loss:0.022777
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:53:04,140, Epoch 041|100, train loss:1.3019
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:54:18,891, Evaluate loss_dR:0.034085, loss_dT:0.067346, se3_loss:0.022873
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:57:08,004, Epoch 042|100, train loss:1.2614
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 02:58:20,435, Best model saved (Epoch 42)
+[INFO]:cam2_oneiter|Train, 2023-05-09 02:58:20,552, Evaluate loss_dR:0.033830, loss_dT:0.066683, se3_loss:0.022660
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:01:11,320, Epoch 043|100, train loss:1.3133
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:02:24,810, Evaluate loss_dR:0.036667, loss_dT:0.066387, se3_loss:0.023051
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:05:17,075, Epoch 044|100, train loss:1.2553
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 03:06:29,420, Best model saved (Epoch 44)
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:06:29,537, Evaluate loss_dR:0.033539, loss_dT:0.065882, se3_loss:0.022468
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:09:22,565, Epoch 045|100, train loss:1.2552
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:10:36,242, Evaluate loss_dR:0.033835, loss_dT:0.065834, se3_loss:0.022497
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:13:27,190, Epoch 046|100, train loss:1.2234
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:14:39,439, Evaluate loss_dR:0.033660, loss_dT:0.067008, se3_loss:0.022736
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:17:28,691, Epoch 047|100, train loss:1.2573
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:18:42,445, Evaluate loss_dR:0.033983, loss_dT:0.066807, se3_loss:0.022772
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:21:32,883, Epoch 048|100, train loss:1.3486
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 03:22:46,001, Best model saved (Epoch 48)
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:22:46,117, Evaluate loss_dR:0.033059, loss_dT:0.065746, se3_loss:0.022355
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:25:37,084, Epoch 049|100, train loss:1.2134
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:26:50,064, Evaluate loss_dR:0.032856, loss_dT:0.066199, se3_loss:0.022436
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:29:40,482, Epoch 050|100, train loss:1.2497
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:30:54,131, Evaluate loss_dR:0.032886, loss_dT:0.066655, se3_loss:0.022526
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:33:46,776, Epoch 051|100, train loss:1.2583
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:34:58,956, Evaluate loss_dR:0.033094, loss_dT:0.066044, se3_loss:0.022399
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:37:50,323, Epoch 052|100, train loss:1.2819
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:39:02,914, Evaluate loss_dR:0.032829, loss_dT:0.065876, se3_loss:0.022361
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:41:53,851, Epoch 053|100, train loss:1.3033
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:43:07,416, Evaluate loss_dR:0.032956, loss_dT:0.066166, se3_loss:0.022445
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:45:57,836, Epoch 054|100, train loss:1.2427
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 03:47:11,556, Best model saved (Epoch 54)
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:47:11,670, Evaluate loss_dR:0.032855, loss_dT:0.065166, se3_loss:0.022174
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:50:02,083, Epoch 055|100, train loss:1.2230
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:51:14,958, Evaluate loss_dR:0.033330, loss_dT:0.065322, se3_loss:0.022299
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:54:05,993, Epoch 056|100, train loss:1.2167
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 03:55:18,144, Best model saved (Epoch 56)
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:55:18,257, Evaluate loss_dR:0.033090, loss_dT:0.064986, se3_loss:0.022168
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:58:08,139, Epoch 057|100, train loss:1.1570
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 03:59:21,099, Best model saved (Epoch 57)
+[INFO]:cam2_oneiter|Train, 2023-05-09 03:59:21,215, Evaluate loss_dR:0.032930, loss_dT:0.064930, se3_loss:0.022135
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:02:12,951, Epoch 058|100, train loss:1.0979
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:03:26,117, Evaluate loss_dR:0.032655, loss_dT:0.065541, se3_loss:0.022232
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:06:16,518, Epoch 059|100, train loss:1.2551
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 04:07:29,988, Best model saved (Epoch 59)
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:07:30,104, Evaluate loss_dR:0.032536, loss_dT:0.065106, se3_loss:0.022133
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:10:20,599, Epoch 060|100, train loss:1.3018
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 04:11:35,099, Best model saved (Epoch 60)
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:11:35,226, Evaluate loss_dR:0.032416, loss_dT:0.065145, se3_loss:0.022117
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:14:25,213, Epoch 061|100, train loss:1.2541
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 04:15:38,181, Best model saved (Epoch 61)
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:15:38,295, Evaluate loss_dR:0.032429, loss_dT:0.064919, se3_loss:0.022043
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:18:28,666, Epoch 062|100, train loss:1.1311
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:19:41,505, Evaluate loss_dR:0.033130, loss_dT:0.064911, se3_loss:0.022170
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:22:34,336, Epoch 063|100, train loss:1.2200
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:23:47,758, Evaluate loss_dR:0.032574, loss_dT:0.066004, se3_loss:0.022330
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:26:36,023, Epoch 064|100, train loss:1.0673
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:27:50,410, Evaluate loss_dR:0.032551, loss_dT:0.065202, se3_loss:0.022150
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:30:42,116, Epoch 065|100, train loss:1.1294
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:31:55,342, Evaluate loss_dR:0.032463, loss_dT:0.065027, se3_loss:0.022098
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:34:47,203, Epoch 066|100, train loss:1.2624
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:36:00,577, Evaluate loss_dR:0.032764, loss_dT:0.064707, se3_loss:0.022048
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:38:51,521, Epoch 067|100, train loss:1.1736
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 04:40:04,138, Best model saved (Epoch 67)
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:40:04,251, Evaluate loss_dR:0.032578, loss_dT:0.064444, se3_loss:0.021983
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:42:53,496, Epoch 068|100, train loss:1.2488
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:44:06,648, Evaluate loss_dR:0.032578, loss_dT:0.064748, se3_loss:0.022045
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:46:56,790, Epoch 069|100, train loss:1.2081
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:48:08,976, Evaluate loss_dR:0.032385, loss_dT:0.065305, se3_loss:0.022136
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:50:59,102, Epoch 070|100, train loss:1.1394
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 04:52:11,703, Best model saved (Epoch 70)
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:52:11,817, Evaluate loss_dR:0.032507, loss_dT:0.064344, se3_loss:0.021935
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:55:02,433, Epoch 071|100, train loss:1.2019
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:56:13,722, Evaluate loss_dR:0.032876, loss_dT:0.064410, se3_loss:0.022006
+[INFO]:cam2_oneiter|Train, 2023-05-09 04:59:04,881, Epoch 072|100, train loss:1.2122
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:00:17,443, Evaluate loss_dR:0.032502, loss_dT:0.065092, se3_loss:0.022110
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:03:07,428, Epoch 073|100, train loss:1.1783
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:04:20,607, Evaluate loss_dR:0.032370, loss_dT:0.064826, se3_loss:0.022012
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:07:11,174, Epoch 074|100, train loss:1.1440
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:08:24,896, Evaluate loss_dR:0.033366, loss_dT:0.065368, se3_loss:0.022272
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:11:16,692, Epoch 075|100, train loss:1.1971
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:12:29,394, Evaluate loss_dR:0.032959, loss_dT:0.064385, se3_loss:0.022031
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:15:21,382, Epoch 076|100, train loss:1.2277
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:16:34,454, Evaluate loss_dR:0.032399, loss_dT:0.064762, se3_loss:0.022037
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:19:25,687, Epoch 077|100, train loss:1.2186
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:20:38,106, Evaluate loss_dR:0.032369, loss_dT:0.065186, se3_loss:0.022098
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:23:28,250, Epoch 078|100, train loss:1.2613
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:24:41,670, Evaluate loss_dR:0.032678, loss_dT:0.065119, se3_loss:0.022132
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:27:32,075, Epoch 079|100, train loss:1.1552
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:28:43,619, Evaluate loss_dR:0.032262, loss_dT:0.064832, se3_loss:0.022010
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:31:33,952, Epoch 080|100, train loss:1.1448
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:32:46,713, Evaluate loss_dR:0.032374, loss_dT:0.064599, se3_loss:0.021954
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:35:38,210, Epoch 081|100, train loss:1.1426
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:36:51,804, Evaluate loss_dR:0.032398, loss_dT:0.064812, se3_loss:0.022026
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:39:43,989, Epoch 082|100, train loss:1.1005
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:40:56,869, Evaluate loss_dR:0.032158, loss_dT:0.064821, se3_loss:0.021993
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:43:47,728, Epoch 083|100, train loss:1.0355
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:45:01,456, Evaluate loss_dR:0.032339, loss_dT:0.064554, se3_loss:0.021964
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:47:54,638, Epoch 084|100, train loss:1.1727
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:49:06,824, Evaluate loss_dR:0.032618, loss_dT:0.064479, se3_loss:0.021957
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:51:57,113, Epoch 085|100, train loss:1.1617
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:53:10,238, Evaluate loss_dR:0.032230, loss_dT:0.064679, se3_loss:0.021958
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:56:01,470, Epoch 086|100, train loss:1.1005
+[INFO]:cam2_oneiter|Train, 2023-05-09 05:57:13,918, Evaluate loss_dR:0.032173, loss_dT:0.064852, se3_loss:0.021992
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:00:02,752, Epoch 087|100, train loss:1.1337
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 06:01:15,250, Best model saved (Epoch 87)
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:01:15,364, Evaluate loss_dR:0.032315, loss_dT:0.064001, se3_loss:0.021840
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:04:07,913, Epoch 088|100, train loss:1.1345
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:05:21,323, Evaluate loss_dR:0.032369, loss_dT:0.064426, se3_loss:0.021911
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:08:13,619, Epoch 089|100, train loss:1.1536
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:09:27,725, Evaluate loss_dR:0.032322, loss_dT:0.064580, se3_loss:0.021948
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:12:18,266, Epoch 090|100, train loss:1.1495
+[DEBUG]:cam2_oneiter|Train, 2023-05-09 06:13:30,947, Best model saved (Epoch 90)
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:13:31,061, Evaluate loss_dR:0.032338, loss_dT:0.063990, se3_loss:0.021800
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:16:22,403, Epoch 091|100, train loss:1.1725
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:17:35,004, Evaluate loss_dR:0.032945, loss_dT:0.064675, se3_loss:0.022053
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:20:24,853, Epoch 092|100, train loss:1.0522
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:21:37,291, Evaluate loss_dR:0.032126, loss_dT:0.064505, se3_loss:0.021894
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:24:28,759, Epoch 093|100, train loss:1.1328
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:25:42,493, Evaluate loss_dR:0.032312, loss_dT:0.064176, se3_loss:0.021835
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:28:33,296, Epoch 094|100, train loss:1.1149
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:29:45,782, Evaluate loss_dR:0.032223, loss_dT:0.064365, se3_loss:0.021893
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:32:36,276, Epoch 095|100, train loss:1.1021
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:33:48,983, Evaluate loss_dR:0.032275, loss_dT:0.064604, se3_loss:0.021942
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:36:39,984, Epoch 096|100, train loss:1.0956
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:37:51,869, Evaluate loss_dR:0.032183, loss_dT:0.064579, se3_loss:0.021916
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:40:44,504, Epoch 097|100, train loss:1.1320
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:41:57,190, Evaluate loss_dR:0.032142, loss_dT:0.064733, se3_loss:0.021947
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:44:50,614, Epoch 098|100, train loss:1.1745
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:46:02,348, Evaluate loss_dR:0.032064, loss_dT:0.064484, se3_loss:0.021881
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:48:52,089, Epoch 099|100, train loss:1.1083
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:50:05,024, Evaluate loss_dR:0.032061, loss_dT:0.064669, se3_loss:0.021900
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:52:55,898, Epoch 100|100, train loss:1.1736
+[INFO]:cam2_oneiter|Train, 2023-05-09 06:54:08,619, Evaluate loss_dR:0.032330, loss_dT:0.064512, se3_loss:0.021911

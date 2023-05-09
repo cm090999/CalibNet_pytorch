@@ -142,7 +142,9 @@ class DepthImgGenerator:
             proj_xrev = proj_x[bi,rev_i]
             proj_yrev = proj_y[bi,rev_i]
             batch_depth_img[bi*torch.ones_like(proj_xrev),proj_yrev,proj_xrev] = self.pcd_range[bi,rev_i]
-        return batch_depth_img.unsqueeze(1), pcd   # (B,1,H,W), (B,3,N)
+        batch_depth_img = batch_depth_img.unsqueeze(1)
+        batch_depth_img = self.pooling(batch_depth_img)
+        return batch_depth_img, pcd   # (B,1,H,W), (B,3,N)
     
     def __call__(self,ExTran:torch.Tensor,pcd:torch.Tensor):
         """transform pcd and project it to img

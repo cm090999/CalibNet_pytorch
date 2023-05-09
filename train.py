@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from dataset import BaseKITTIDataset,KITTI_perturb
 from mylogger import get_logger, print_highlight, print_warning
-from CalibNet import CalibNet
+from CalibNet import CalibNet, CalibNet_DINOV2
 import loss as loss_utils
 import utils
 from tqdm import tqdm
@@ -108,7 +108,10 @@ def val(args,model:CalibNet,val_loader:DataLoader):
 
 def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     device = torch.device(args.device)
-    model = CalibNet(backbone_pretrained=False,depth_scale=args.scale)
+    # model = CalibNet(backbone_pretrained=False,depth_scale=args.scale)
+    model = CalibNet_DINOV2()
+    for params in model.backbone.parameters():
+        params.requires_grad = False
     model.to(device)
     if args.optim == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(),args.lr0,momentum=args.momentum,weight_decay=args.weight_decay)
