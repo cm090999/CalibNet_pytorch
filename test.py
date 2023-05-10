@@ -3,7 +3,7 @@ import os
 import yaml
 import torch
 from torch.utils.data.dataloader import DataLoader
-from dataset import BaseKITTIDataset,KITTI_perturb
+from dataset import BaseKITTIDataset,KITTI_perturb, KITTI_Base_rangeImage, KITTI_Perturb_rangeImage
 from mylogger import get_logger, print_highlight, print_warning
 from CalibNet import CalibNet, CalibNet_DINOV2
 import loss as loss_utils
@@ -56,13 +56,19 @@ def test(args,chkpt:dict,test_loader):
         InTran = batch['InTran'][0].to(device)
         igt = batch['igt'].to(device)
         img_shape = rgb_img.shape[-2:]
-        depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
+
+        v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+        v_res= 0.42 # 0.42
+        h_res= 0.35 # 0.35
+        depth_generator = utils.transform.RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov)
+        # depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
+
         # model(rgb_img,uncalibed_depth_img)
         g0 = torch.eye(4).repeat(B,1,1).to(device)
         for _ in range(args.inner_iter):
             twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
             extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
-            uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
+            uncalibed_depth_img, uncalibed_pcd = depth_generator.transform_pcd_and_range(pcd = uncalibed_pcd.cpu(),Extran=extran.cpu())          
             g0 = extran.bmm(g0)
         dg = g0.bmm(igt)
         rot_dx,tsl_dx = loss_utils.gt2euler(dg.squeeze(0).cpu().detach().numpy())
@@ -104,13 +110,14 @@ if __name__ == "__main__":
     # TMP Fix
     test_split = ['11']
 
-    # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
-    #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-    #                                  pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-    #                                  extend_ratio=CONFIG['dataset']['extend_ratio'])
+    v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+    v_res= 0.42 # 0.42
+    h_res= 0.35 # 0.35
+    rangeImageGenerator = utils.transform.RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov)
 
-    test_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    test_dataset = KITTI_Base_rangeImage(basedir=args.dataset_path,
                                     batch_size=args.batch_size,
+                                    rangeImageGenerator=rangeImageGenerator,
                                     seqs=test_split,
                                     cam_id=CONFIG['dataset']['cam_id'],
                                     meta_json='data_len.json',
@@ -140,8 +147,9 @@ if __name__ == "__main__":
             np.savetxt(test_perturb_file,perturb_arr,delimiter=',')
             print_highlight('Validation perturb file rewritten.')
             
-    test_dataset = KITTI_perturb(test_dataset,args.max_deg,args.max_tran,args.mag_randomly,
+    test_dataset = KITTI_Perturb_rangeImage(test_dataset,args.max_deg,args.max_tran,args.mag_randomly,
                                 pooling_size=CONFIG['dataset']['pooling'],file=test_perturb_file)
+    
     print('Finished creating test dataset')
     
     test_dataloader = DataLoader(test_dataset,args.batch_size,num_workers=args.num_workers,pin_memory=args.pin_memory)

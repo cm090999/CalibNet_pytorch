@@ -6,6 +6,7 @@ from torchvision.transforms import transforms as Tf
 import numpy as np
 import pykitti
 import open3d as o3d
+# from dataset import BaseKITTIDataset
 from utils import transform, se3
 from PIL import Image
 
@@ -176,7 +177,7 @@ class BaseKITTIDataset(Dataset):
         T_cam2velo = self.tensor_tran(T_cam2velo)
         return dict(img=_img,pcd=_calibed_pcd,pcd_range=_pcd_range,depth_img=_depth_img,
                     InTran=K_cam,ExTran=T_cam2velo)
-        
+
 class KITTI_perturb(Dataset):
     def __init__(self,dataset:BaseKITTIDataset,max_deg:float,max_tran:float,mag_randomly=True,pooling_size=5,file=None):
         assert (pooling_size-1) % 2 == 0, 'pooling size must be odd to keep image size constant'
@@ -214,6 +215,81 @@ class KITTI_perturb(Dataset):
         data.update(new_data)
         data['depth_img'] = self.pooling(data['depth_img'][None,...])
         data['uncalibed_depth_img'] = self.pooling(data['uncalibed_depth_img'][None,...])
+        return data
+    
+
+class KITTI_Base_rangeImage(BaseKITTIDataset):
+    def __init__(self, basedir: str, batch_size: int, rangeImageGenerator: transform.RangeImageGenerator, seqs=['09', '10'], cam_id: int = 2, meta_json='data_len.json', skip_frame=1, voxel_size=0.3, pcd_sample_num=4096, resize_ratio=(0.5, 0.5), extend_intran=(2.5, 2.5)):
+        super().__init__(basedir, batch_size, seqs, cam_id, meta_json, skip_frame, voxel_size, pcd_sample_num, resize_ratio, extend_intran)
+
+        self.rangeImageGenerator = rangeImageGenerator
+
+        return
+    
+    def __getitem__(self, index):
+        group_id = np.digitize(index,self.sumsep,right=False)
+        data = self.kitti_datalist[group_id]
+        T_cam2velo = getattr(data.calib,'T_cam%d_velo'%self.cam_id)
+        K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ getattr(data.calib,'K_cam%d'%self.cam_id)       
+        if group_id > 0:
+            sub_index = index - self.sumsep[group_id-1]
+        else:
+            sub_index = index
+        raw_img = getattr(data,'get_cam%d'%self.cam_id)(sub_index)  # PIL Image
+        H,W = raw_img.height, raw_img.width
+        RH = round(H*self.resize_ratio[0])
+        RW = round(W*self.resize_ratio[1])
+        REVH,REVW = self.extend_intran[0]*RH,self.extend_intran[1]*RW
+        K_cam_extend = K_cam.copy()
+        K_cam_extend[0,-1] *= self.extend_intran[0]
+        K_cam_extend[1,-1] *= self.extend_intran[1]
+        raw_img = raw_img.resize([RW,RH],Image.BILINEAR)
+        _img = self.img_tran(raw_img)  # raw img input (3,H,W)
+        pcd = data.get_velo(sub_index)
+        pcd[:,3] = 1.0  # (N,4)
+        calibed_pcd = T_cam2velo @ pcd.T  # [4,4] @ [4,N] -> [4,N]
+        _calibed_pcd = self.pcd_tran(calibed_pcd[:3,:].T).T  # raw pcd input (3,N)
+        *_,rev = transform.binary_projection((REVH,REVW),K_cam_extend,_calibed_pcd)
+        _calibed_pcd = _calibed_pcd[:,rev]  
+        _calibed_pcd = self.resample_tran(_calibed_pcd.T).T # (3,n)
+        _pcd_range = np.linalg.norm(_calibed_pcd,axis=0)  # (n,)
+        u,v,r,_ = transform.pcd_projection((RH,RW),K_cam,_calibed_pcd,_pcd_range)
+
+        _depth_img = self.rangeImageGenerator.generateRangeImage_numpy(pcd,recursive=True)
+
+        _calibed_pcd = self.tensor_tran(_calibed_pcd)
+        _pcd_range = self.tensor_tran(_pcd_range)
+        K_cam = self.tensor_tran(K_cam)
+        T_cam2velo = self.tensor_tran(T_cam2velo)
+        return dict(img=_img,pcd=_calibed_pcd,pcd_range=_pcd_range,depth_img=_depth_img,
+                    InTran=K_cam,ExTran=T_cam2velo)
+
+class KITTI_Perturb_rangeImage(KITTI_perturb):
+    def __init__(self, dataset: KITTI_Base_rangeImage, max_deg: float, max_tran: float, mag_randomly=True, pooling_size=5, file=None):
+        super().__init__(dataset, max_deg, max_tran, mag_randomly, pooling_size, file)
+
+        return
+    
+    def __getitem__(self, index):
+        data = self.dataset[index]
+        H,W = data['img'].shape[-2:]  # (RH,RW)
+        calibed_pcd = data['pcd']  # (3,N)
+        InTran = data['InTran']  # (3,3)
+        if self.file is None:  # randomly generate igt
+            _uncalibed_pcd = self.transform(calibed_pcd[None,:,:]).squeeze(0)  # (3,N)
+            igt = self.transform.igt.squeeze(0)  # (4,4)
+        else:
+            igt = se3.exp(self.perturb[:,index,:])  # (1,6) -> (1,4,4)
+            _uncalibed_pcd = se3.transform(igt,calibed_pcd[None,...]).squeeze(0)  # (3,N)
+            igt.squeeze_(0)  # (4,4)
+
+        rangeImage = self.dataset.rangeImageGenerator.generateRangeImage(_uncalibed_pcd[None],recursive=True)[0,:,:,:]
+
+        # add new item
+        new_data = dict(uncalibed_pcd=_uncalibed_pcd,uncalibed_depth_img=rangeImage,igt=igt)
+        data.update(new_data)
+        # data['depth_img'] = self.pooling(data['depth_img'][None,...])
+        # data['uncalibed_depth_img'] = self.pooling(data['uncalibed_depth_img'][None,...])
         return data
         
         

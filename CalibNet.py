@@ -113,7 +113,9 @@ class CalibNet_DINOV2(nn.Module):
         # depth: [B,1,H,W]
 
         # add 2 channels to depth image
-        depth_3 = torch.zeros(rgb.size())
+        bt,c,hd,wd = depth.size()
+        if c ==1:
+            depth_3 = torch.zeros((bt,3,hd,wd))
 
         depth_3[:, 0, :, :] = depth[:, 0, :, :]
         depth_3[:, 1, :, :] = depth[:, 0, :, :]

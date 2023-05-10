@@ -6,7 +6,7 @@ import torch
 import torch.optim
 import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
-from dataset import BaseKITTIDataset,KITTI_perturb
+from dataset import BaseKITTIDataset,KITTI_perturb,KITTI_Base_rangeImage,KITTI_Perturb_rangeImage
 from mylogger import get_logger, print_highlight, print_warning
 from CalibNet import CalibNet, CalibNet_DINOV2
 import loss as loss_utils
@@ -79,13 +79,19 @@ def val(args,model:CalibNet,val_loader:DataLoader):
             InTran = batch['InTran'][0].to(device)
             igt = batch['igt'].to(device)
             img_shape = rgb_img.shape[-2:]
-            depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
+
+            v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+            v_res= 0.42 # 0.42
+            h_res= 0.35 # 0.35
+            depth_generator = utils.transform.RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov)
+            # depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
+
             # model(rgb_img,uncalibed_depth_img)
             g0 = torch.eye(4).repeat(B,1,1).to(device)
             for _ in range(args.inner_iter):
                 twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
                 extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
-                uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
+                uncalibed_depth_img, uncalibed_pcd = depth_generator.transform_pcd_and_range(pcd = uncalibed_pcd.cpu(),Extran=extran.cpu())          
                 g0 = extran.bmm(g0)
             err_g = g0.bmm(igt)
             dR,dT = loss_utils.geodesic_distance(err_g)
@@ -93,8 +99,8 @@ def val(args,model:CalibNet,val_loader:DataLoader):
             total_dT += dT.item()
             se3_loss = torch.linalg.norm(utils.se3.log(err_g),dim=1).mean()/6
             total_se3_loss += se3_loss.item()
-            loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
-            loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
+            loss1 = photo_loss(calibed_depth_img.squeeze(),uncalibed_depth_img.squeeze().to('cuda'))
+            loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd.to('cuda'))
             loss = alpha*loss1 + beta*loss2
             total_loss += loss.item()
             tqdm_console.set_postfix_str('dR:{:.4f}, dT:{:.4f},se3_loss:{:.4f}'.format(loss1,loss2,se3_loss))
@@ -169,19 +175,24 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 InTran = batch['InTran'][0].to(device)
                 igt = batch['igt'].to(device)
                 img_shape = rgb_img.shape[-2:]
-                depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
+
+                v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+                v_res= 0.42 # 0.42
+                h_res= 0.35 # 0.35
+                depth_generator = utils.transform.RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov)
+                # depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
                 # model(rgb_img,uncalibed_depth_img)
                 g0 = torch.eye(4).repeat(B,1,1).to(device)
                 model.eval()
                 for _ in range(args.inner_iter):
                     twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
                     extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
-                    uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
+                    uncalibed_depth_img, uncalibed_pcd = depth_generator.transform_pcd_and_range(pcd = uncalibed_pcd.cpu(),Extran=extran.cpu())
                     g0 = extran.bmm(g0)
                 dR,dT = loss_utils.geodesic_distance(g0.bmm(igt))
                 model.train()
-                loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
-                loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
+                loss1 = photo_loss(calibed_depth_img.squeeze(),uncalibed_depth_img.squeeze().to(device=device))
+                loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd.to(device=device))
                 # loss2 = loss_utils.earth_mover_distance(calibed_pcd,uncalibed_pcd)
                 loss = alpha*loss1 + beta*loss2
                 loss.backward()
@@ -245,9 +256,28 @@ if __name__ == "__main__":
     print_highlight('args have been received, please wait for dataloader...')
     train_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['train']]
     val_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['val']]
+
     # dataset
-    train_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+
+    v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+    v_res= 0.42 # 0.42
+    h_res= 0.35 # 0.35
+    rangeImageGenerator = utils.transform.RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov)
+
+    # train_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    #                                 batch_size=args.batch_size,
+    #                                 seqs=train_split,
+    #                                 cam_id=CONFIG['dataset']['cam_id'],
+    #                                 meta_json='data_len.json',
+    #                                 skip_frame=args.skip_frame,
+    #                                 voxel_size=CONFIG['dataset']['voxel_size'],
+    #                                 pcd_sample_num=args.pcd_sample,
+    #                                 resize_ratio=args.resize_ratio,
+    #                                 extend_intran=CONFIG['dataset']['extend_ratio'])
+    
+    train_dataset = KITTI_Base_rangeImage(basedir=args.dataset_path,
                                     batch_size=args.batch_size,
+                                    rangeImageGenerator=rangeImageGenerator,
                                     seqs=train_split,
                                     cam_id=CONFIG['dataset']['cam_id'],
                                     meta_json='data_len.json',
@@ -257,15 +287,34 @@ if __name__ == "__main__":
                                     resize_ratio=args.resize_ratio,
                                     extend_intran=CONFIG['dataset']['extend_ratio'])
     
-    train_dataset = KITTI_perturb(dataset=train_dataset,
+    # train_dataset = KITTI_perturb(dataset=train_dataset,
+    #                               max_deg=args.max_deg,
+    #                               max_tran=args.max_tran,
+    #                               mag_randomly=args.mag_randomly,
+    #                               pooling_size=CONFIG['dataset']['pooling'],
+    #                               file=None)
+    
+    train_dataset = KITTI_Perturb_rangeImage(dataset=train_dataset,
                                   max_deg=args.max_deg,
                                   max_tran=args.max_tran,
                                   mag_randomly=args.mag_randomly,
                                   pooling_size=CONFIG['dataset']['pooling'],
                                   file=None)
     
-    val_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    # val_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    #                                batch_size=args.batch_size,
+    #                                seqs=val_split,
+    #                                cam_id=CONFIG['dataset']['cam_id'],
+    #                                meta_json='data_len.json',
+    #                                skip_frame=args.skip_frame,
+    #                                voxel_size=CONFIG['dataset']['voxel_size'],
+    #                                pcd_sample_num=args.pcd_sample,
+    #                                resize_ratio=args.resize_ratio,
+    #                                extend_intran=CONFIG['dataset']['extend_ratio'])
+    
+    val_dataset = KITTI_Base_rangeImage(basedir=args.dataset_path,
                                    batch_size=args.batch_size,
+                                   rangeImageGenerator=rangeImageGenerator,
                                    seqs=val_split,
                                    cam_id=CONFIG['dataset']['cam_id'],
                                    meta_json='data_len.json',
@@ -294,9 +343,15 @@ if __name__ == "__main__":
                 perturb_arr[i,:] = transform.generate_transform().cpu().numpy()
             np.savetxt(val_perturb_file,perturb_arr,delimiter=',')
             print_highlight('Validation perturb file rewritten.')
-    val_dataset = KITTI_perturb(val_dataset,args.max_deg,args.max_tran,args.mag_randomly,
+
+    # val_dataset = KITTI_perturb(val_dataset,args.max_deg,args.max_tran,args.mag_randomly,
+    #                             pooling_size=CONFIG['dataset']['pooling'],
+    #                             file=os.path.join(args.checkpoint_dir,"val_seq.csv"))
+    
+    val_dataset = KITTI_Perturb_rangeImage(val_dataset,args.max_deg,args.max_tran,args.mag_randomly,
                                 pooling_size=CONFIG['dataset']['pooling'],
                                 file=os.path.join(args.checkpoint_dir,"val_seq.csv"))
+    
     # batch normlization does not support batch=1
     train_drop_last = True if len(train_dataset) % args.batch_size == 1 else False  
     val_drop_last = True if len(val_dataset) % args.batch_size == 1 else False

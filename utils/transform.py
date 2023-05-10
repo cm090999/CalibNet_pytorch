@@ -205,3 +205,219 @@ def binary_projection(img_shape:tuple,intran:np.ndarray,pcd:np.ndarray):
 def nptrans(pcd:np.ndarray,G:np.ndarray)->np.ndarray:
     R,t = G[:3,:3], G[:3,[3]]  # (3,3), (3,1)
     return R @ pcd + t
+
+
+class RangeImageGenerator():
+    def __init__(self, v_res: float, h_res: float, v_fov: tuple, h_fov: tuple, scaling = 0.95, axisFront = 'camera'):
+        self.v_res = v_res
+        self.h_res = h_res
+        self.v_fov = v_fov
+        self.h_fov = h_fov
+        self.scaling = scaling
+        self.axisFront = axisFront
+        return
+    
+    def get_shape(self):
+        # Get Number of pixels in range image
+        vertPix = int((np.absolute(self.v_fov[1] - self.v_fov[0]) / v_res))
+        horiPix = int((np.absolute(self.h_fov[1] - self.h_fov[0]) / h_res))
+        return horiPix,vertPix
+
+    def generateRangeImage(self,points,recursive: bool, scale = 1):
+        """
+        v_res,h_res in degrees
+        points[B,3,N] 
+        """
+        v_res, h_res = scale*self.v_res,scale*self.h_res
+
+        batch_size, _, _ = points.size()
+
+        # Get Number of pixels in range image
+        vertPix = int((np.absolute(self.v_fov[1] - self.v_fov[0]) / v_res))
+        horiPix = int((np.absolute(self.h_fov[1] - self.h_fov[0]) / h_res))
+
+        # Get coordinates and distances
+        if self.axisFront is None:
+            x = points[:,0,:]
+            y = points[:,1,:]
+            z = points[:,2,:]
+        elif self.axisFront == 'camera':
+            x = points[:,2,:]
+            y = -points[:,0,:]
+            z = -points[:,1,:]
+        dist = torch.sqrt(x**2 + y**2 + z**2)
+
+        # Get all vertical angles
+        verticalAngles = torch.arctan2(z, dist) / torch.pi * 180 # Degrees
+
+        # Get all horizontal angles
+        horizontalAngles = torch.arctan2(-y, x) / torch.pi * 180 # Degrees
+
+        # Filter based on FOV setting
+        combined_condition = (verticalAngles < self.v_fov[0]) & (verticalAngles > self.v_fov[1]) & (horizontalAngles > self.h_fov[0]) & (horizontalAngles < self.h_fov[1])
+
+        rangeImage = torch.zeros((batch_size,1,horiPix,vertPix),dtype=torch.float32)
+
+        for batch in range(batch_size):
+
+            verticalAngles_batch = verticalAngles[batch,:][combined_condition[batch,:]]
+            horizontalAngles_batch = horizontalAngles[batch,:][combined_condition[batch,:]]
+            dist_batch = dist[batch,:][combined_condition[batch,:]]
+
+            # Shift angles to all be positive
+            verticalAnglesShifted_batch = (verticalAngles_batch - self.v_fov[0]) * -1
+            horizontalAnglesShifted_batch = horizontalAngles_batch - self.h_fov[0]
+
+            # Get image coordinates of all points
+            x_img_fl = torch.round(horizontalAnglesShifted_batch / np.absolute(self.h_fov[1] - self.h_fov[0]) * (horiPix - 1))
+            y_img_fl = torch.round(verticalAnglesShifted_batch / np.absolute(self.v_fov[1] - self.v_fov[0]) * (vertPix - 1))
+            x_img = x_img_fl.int()
+            y_img = y_img_fl.int()
+
+            # Fill values in range image
+            rangeImage[batch, :,x_img, y_img] = dist_batch
+
+        if recursive == True:
+            for i in range(10):
+                # Define new scaling 
+                scale *= self.scaling
+                # Get empty values
+                empty_pixels_mask = rangeImage == 0
+
+                red_rangeImage = self.generateRangeImage(points, recursive = False, scale = scale)
+                _,_, redwidth, redheight = red_rangeImage.size()
+
+                red_x, red_y = torch.meshgrid(torch.arange(redwidth), torch.arange(redheight),indexing="ij")
+                red_y = red_y.flatten().float()
+                red_x = red_x.flatten().float()
+                red_depth = red_rangeImage.flatten(start_dim=2)
+
+                # Rescale coordinates to match original image
+                red_y = red_y / redheight * (vertPix)
+                red_x = red_x / redwidth * (horiPix)
+
+                # Round and convert to int
+                red_y = torch.round(red_y).int()
+                red_x = torch.round(red_x).int()
+
+                for batch in range(batch_size):
+
+                    # Consider only coordinates that are empty in original depth image
+                    condition = empty_pixels_mask[batch,0,red_x,red_y]
+                    red_x_loc = red_x[condition]
+                    red_y_loc = red_y[condition]
+                    red_depth_loc = red_depth[batch,0,:][condition]
+
+                    rangeImage[batch, :,red_x_loc, red_y_loc] = red_depth_loc
+
+        return rangeImage
+    
+    def generateRangeImage_numpy(self,points,recursive: bool, scale = 1):
+        """
+        v_res,h_res in degrees
+        """
+        # Get Number of pixels in range image
+        v_res, h_res = scale*self.v_res,scale*self.h_res
+        vertPix = int((np.absolute(self.v_fov[1] - self.v_fov[0]) / v_res))
+        horiPix = int((np.absolute(self.h_fov[1] - self.h_fov[0]) / h_res))
+
+        # Get coordinates and distances
+        if self.axisFront is None:
+            x = points[:,0]
+            y = points[:,1]
+            z = points[:,2]
+        elif self.axisFront == 'camera':
+            x = points[:,2]
+            y = -points[:,0]
+            z = -points[:,1]
+        dist = np.sqrt(x**2 + y**2 + z**2)
+
+        # Get all vertical angles
+        verticalAngles = np.arctan2(z, dist) / np.pi * 180 # Degrees
+
+        # Get all horizontal angles
+        horizontalAngles = np.arctan2(-y, x) / np.pi * 180 # Degrees
+
+        # Filter based on FOV setting
+        combined_condition = (verticalAngles < self.v_fov[0]) & (verticalAngles > self.v_fov[1]) & (horizontalAngles > self.h_fov[0]) & (horizontalAngles < self.h_fov[1])
+
+        verticalAngles = verticalAngles[combined_condition]
+        horizontalAngles = horizontalAngles[combined_condition]
+        dist = dist[combined_condition]
+
+        # Shift angles to all be positive
+        verticalAnglesShifted = (verticalAngles - self.v_fov[0]) * -1
+        horizontalAnglesShifted = horizontalAngles - self.h_fov[0]
+
+        # Initialize Range image
+        rangeImage = np.zeros((horiPix,vertPix),dtype=np.float32)
+
+        # Get image coordinates of all points
+        x_img_fl = np.round(horizontalAnglesShifted / np.absolute(self.h_fov[1] - self.h_fov[0]) * (horiPix - 1))
+        y_img_fl = np.round(verticalAnglesShifted / np.absolute(self.v_fov[1] - self.v_fov[0]) * (vertPix - 1))
+        x_img = x_img_fl.astype(int)
+        y_img = y_img_fl.astype(int)
+
+        # Fill values in range image
+        rangeImage[x_img, y_img] = dist
+
+        if recursive == True:
+            for i in range(10):
+                # Define new scaling 
+                scale *= self.scaling
+                # Get empty values
+                empty_pixels_mask = rangeImage == 0
+
+                red_rangeImage = self.generateRangeImage_numpy(points, recursive = False, scale = scale)
+                redwidth, redheight = np.shape(red_rangeImage)
+                red_x, red_y = np.meshgrid(np.arange(redwidth), np.arange(redheight),indexing="ij")
+                red_y = red_y.flatten().astype(float)
+                red_x = red_x.flatten().astype(float)
+                red_depth = red_rangeImage.flatten()
+
+                # Rescale coordinates to match original image
+                red_y = red_y / redheight * (vertPix)
+                red_x = red_x / redwidth * (horiPix)
+
+                # Round and convert to int
+                red_y = np.round(red_y).astype(int)
+                red_x = np.round(red_x).astype(int)
+
+                # Consider only coordinates that are empty in original depth image
+                condition = empty_pixels_mask[red_x,red_y]
+                red_x = red_x[condition]
+                red_y = red_y[condition]
+                red_depth = red_depth[condition]
+
+                rangeImage[red_x,red_y] = red_depth
+
+        return rangeImage
+    
+    def transform_pcd_and_range(self,pcd,Extran):
+        pcd = se3.transform(Extran,pcd)
+        rangeImage = self.generateRangeImage(pcd,recursive=True)
+        return rangeImage, pcd
+    
+import cv2
+if __name__=="__main__":
+    pcd = torch.rand(2,3,20000).cuda()
+    pcd1 = np.fromfile('KITTI_Odometry_Full/sequences/00/velodyne/000000.bin', dtype=np.float32).reshape((-1,4))[:120000,0:3].T
+    pcd2 = np.fromfile('KITTI_Odometry_Full/sequences/00/velodyne/000001.bin', dtype=np.float32).reshape((-1,4))[:120000,0:3].T
+
+    stacked_arr = np.stack([pcd1, pcd2], axis=0)
+
+    pcd = torch.from_numpy(stacked_arr)
+
+    
+    v_fov, h_fov = (2, -25), (-60,60) ### START AT TOP LEFT OF IMAGE
+    v_res= 0.42 # 0.42
+    h_res= 0.35 # 0.35
+
+    rangeGenerator = RangeImageGenerator(v_res=v_res,h_res=h_res,v_fov=v_fov,h_fov=h_fov, axisFront=None)
+    rangeImages = rangeGenerator.generateRangeImage(pcd,recursive=True)
+    rangeImag_np = rangeGenerator.generateRangeImage_numpy(pcd1.T,recursive=True)
+
+    testimg = rangeImages[0,0,:,:].squeeze().detach().numpy().T
+    cv2.imwrite('rangeImg.png', testimg)
+    cv2.imwrite('rangeImg_np.png', rangeImag_np)
+    print('end')
