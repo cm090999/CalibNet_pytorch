@@ -9,6 +9,9 @@ import open3d as o3d
 # from dataset import BaseKITTIDataset
 from utils import transform, se3
 from PIL import Image
+import cv2
+
+import open3d as o3d
 
 def check_length(root:str,save_name='data_len.json'):
     seq_dir = os.path.join(root,'sequences')
@@ -291,15 +294,157 @@ class KITTI_Perturb_rangeImage(KITTI_perturb):
         # data['depth_img'] = self.pooling(data['depth_img'][None,...])
         # data['uncalibed_depth_img'] = self.pooling(data['uncalibed_depth_img'][None,...])
         return data
+
+class BaseONCEDataset(Dataset):
+    def __init__(self,basedir:str,batch_size:int,seqs=['000076','000080'],cam_id:int=1,skip_frame=1,
+                 voxel_size=0.3,pcd_sample_num=20000,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),
+                 ):
         
+        self.skip_frame = skip_frame
+        
+        self.base_dir = basedir
+        self.seqs = seqs
+        self.cam_id = cam_id
+        self.camera_dir = 'cam0' + str(cam_id)
+        self.lidar_dir = 'lidar_roof'
+
+        self.drives_dir = []
+        for seq in seqs:
+            dir = self.base_dir + '/' + seq
+            self.drives_dir.append(dir)
+
+        # Get image and LiDAR paths
+        self.images_pths = {key: None for key in seqs}
+        self.lidar_pths  = {key: None for key in seqs}
+        for i,dir in enumerate(self.drives_dir):
+            images = sorted([os.path.join(dir, self.camera_dir, img) for img in os.listdir(os.path.join(dir, self.camera_dir))])
+            images_filt = images[::skip_frame]
+            self.images_pths[self.seqs[i]] = images_filt
+            lidar = sorted([os.path.join(dir, self.lidar_dir, img) for img in os.listdir(os.path.join(dir, self.lidar_dir))])
+            lidar_filt = lidar[::skip_frame]
+            self.lidar_pths[self.seqs[i]] = lidar_filt
+
+        # Get calibration
+        self.calibdata = {key: None for key in seqs}
+        for i,dir in enumerate(self.drives_dir):
+            fileName = seqs[i] + '.json'
+            with open(os.path.join(dir, fileName), 'r')as f:
+                calib = json.load(f)
+            self.calibdata[seqs[i]] = calib['calib'][self.camera_dir]
+
+        # Concatenate data to enable indexing
+        self.elements_per_seq = {}
+        for i,seq in enumerate(self.seqs):
+            length_im = len(self.images_pths[seq])
+            self.elements_per_seq[seq] = length_im
+
+        self.idx_cumsum = {}
+        for i,seq in enumerate(self.seqs):
+            if i == 0:
+                self.idx_cumsum[seq] = self.elements_per_seq[seq]
+            else:
+                self.idx_cumsum[seq] = self.elements_per_seq[seq] + self.elements_per_seq[self.seqs[i-1]]
+                
+        self.resize_ratio = resize_ratio
+        
+        self.resample_tran = Resampler(pcd_sample_num)
+        self.tensor_tran = ToTensor()
+        self.img_tran = Tf.ToTensor()
+        self.pcd_tran = KITTIFilter(voxel_size,'none')
+        self.extend_intran = extend_intran
+
+        return
+        
+    def __len__(self):
+        return self.idx_cumsum[self.seqs[-1]]
+    
+    
+    def __getitem__(self, index):
+
+        downsample = 0.5
+
+        # Get image and lidar for given index
+        curr_drive = None
+        idx_loc = index
+
+        for i,seq in enumerate(self.seqs):
+            if (idx_loc - self.elements_per_seq[seq] + 1) <= 0:
+                curr_drive = seq
+                break
+            else:
+                idx_loc -= self.elements_per_seq[seq] + 1
+
+        cam_pth = self.images_pths[curr_drive][idx_loc]
+        lidr_pth = self.lidar_pths[curr_drive][idx_loc]
+        calib_data = self.calibdata[curr_drive]
+
+        K_cam_orig = np.array(calib_data['cam_intrinsic'])
+        dist = np.array(calib_data['distortion'])
+
+        raw_img_dis = Image.open(cam_pth).convert('RGB')
+        raw_img = cv2.undistort(np.asarray(raw_img_dis),K_cam_orig,distCoeffs=dist)
+        pcd = np.fromfile(lidr_pth, dtype=np.float32).reshape((-1,4))
+
+        K_cam_orig = K_cam_orig * downsample
+        K_cam_orig[2,2] = 1
+        K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ K_cam_orig
+        
+        T_cam2velo = np.array(calib_data['cam_to_velo'])
+
+        # T_cam2velo[:3,-1] = -T_cam2velo[:3,-1]
+        # rotmat = np.linalg.inv(T_cam2velo[:3,:3])
+        # T_cam2velo[:3,:3] = rotmat
+
+        
+
+        
+        h,w,c = np.shape(raw_img)
+        h = int(h*downsample)
+        w = int(w*downsample)
+        raw_img = cv2.resize(raw_img,(w,h), np.zeros((4,1)),interpolation=cv2.INTER_NEAREST)
+        raw_img = Image.fromarray(raw_img)
+
+        H,W = raw_img.height, raw_img.width
+        RH = round(H*self.resize_ratio[0])
+        RW = round(W*self.resize_ratio[1])
+        REVH,REVW = self.extend_intran[0]*RH,self.extend_intran[1]*RW
+        K_cam_extend = K_cam.copy()
+        K_cam_extend[0,-1] *= self.extend_intran[0]
+        K_cam_extend[1,-1] *= self.extend_intran[1]
+        raw_img = raw_img.resize([RW,RH],Image.BILINEAR)
+        _img = self.img_tran(raw_img)  # raw img input (3,H,W)
+        pcd[:,3] = 1.0  # (N,4)
+        calibed_pcd = (T_cam2velo @ pcd.T)[:3,:] # [4,4] @ [4,N] -> [4,N]
+        _calibed_pcd = self.pcd_tran(calibed_pcd[:3,:].T).T  # raw pcd input (3,N)
+        *_,rev = transform.binary_projection((REVH,REVW),K_cam_extend,_calibed_pcd)
+        _calibed_pcd = _calibed_pcd[:,rev]  
+        _calibed_pcd = self.resample_tran(_calibed_pcd.T).T # (3,n)
+        _pcd_range = np.linalg.norm(_calibed_pcd,axis=0)  # (n,)
+        u,v,r,_ = transform.pcd_projection((RH,RW),K_cam,_calibed_pcd,_pcd_range)
+        _depth_img = torch.zeros(RH,RW,dtype=torch.float32)
+        _depth_img[v,u] = torch.from_numpy(r).type(torch.float32)
+        _calibed_pcd = self.tensor_tran(_calibed_pcd)
+        _pcd_range = self.tensor_tran(_pcd_range)
+        K_cam = self.tensor_tran(K_cam)
+        T_cam2velo = self.tensor_tran(T_cam2velo)
+
+        return dict(img=_img,pcd=_calibed_pcd,pcd_range=_pcd_range,depth_img=_depth_img,
+                    InTran=K_cam,ExTran=T_cam2velo)        
         
 if __name__ == "__main__":
     import matplotlib
     matplotlib.use('Agg')
     from matplotlib import pyplot as plt
+    once_base_dataset = BaseONCEDataset(basedir='ONCE/data',
+                                        batch_size=1,
+                                        skip_frame=2,
+                                        cam_id=1)
+    once_base_data_pert = KITTI_perturb(dataset=once_base_dataset,
+                                        max_deg=10,
+                                        max_tran=3)
     base_dataset = BaseKITTIDataset('KITTI_Odometry_Full',1,seqs=['00','01'],skip_frame=3)
     dataset = KITTI_perturb(base_dataset,30,3)
-    data = dataset[2]
+    data = once_base_data_pert[2]
     for key,value in data.items():
         if isinstance(value,torch.Tensor):
             shape = value.size()
@@ -307,11 +452,13 @@ if __name__ == "__main__":
             shape = value
         print('{key}: {shape}'.format(key=key,shape=shape))
     plt.figure()
-    plt.subplot(1,2,1)
-    plt.imshow(data['depth_img'].squeeze(0).numpy())
-    plt.subplot(1,2,2)
-    plt.imshow(data['uncalibed_depth_img'].squeeze(0).numpy())
-    plt.savefig('dataset_demo.png')
+    plt.subplot(1,3,1)
+    plt.imshow(data['depth_img'].squeeze(0).numpy(), cmap='gray')
+    plt.subplot(1,3,2)
+    plt.imshow(data['uncalibed_depth_img'].squeeze(0).numpy(), cmap='gray')
+    plt.subplot(1,3,3)
+    plt.imshow(np.moveaxis(data['img'].squeeze(0).numpy(),0,-1))
+    plt.savefig('dataset_demo.png', dpi = 800)
     
         
 
