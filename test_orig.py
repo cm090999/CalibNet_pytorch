@@ -10,6 +10,9 @@ import loss as loss_utils
 import utils
 import numpy as np
 
+from utils.visualizations import vis_eval, printStatistics
+import cv2
+
 def options():
     parser = argparse.ArgumentParser()
     # dataset
@@ -27,7 +30,7 @@ def options():
     parser.add_argument("--perturb_file",type=str,default='test_seq.csv')
     # schedule
     parser.add_argument("--device",type=str,default='cuda:0')
-    parser.add_argument("--pretrained",type=str,default='./checkpoint/cam2_oneiter_best_Orig.pth')
+    parser.add_argument("--pretrained",type=str,default='./checkpoint/cam2_oneiter_best_pretrained.pth')
     parser.add_argument("--log_dir",default='log/')
     parser.add_argument("--checkpoint_dir",type=str,default="checkpoint/")
     parser.add_argument("--res_dir",type=str,default='res/')
@@ -46,6 +49,12 @@ def test(args,chkpt:dict,test_loader):
     logger = get_logger('{name}-Test'.format(name=args.name),os.path.join(args.log_dir,args.name+'_test.log'),mode='w')
     logger.debug(args)
     res_npy = np.zeros([len(test_loader),6])
+
+    alt_res_npy = np.zeros([len(test_loader),3])
+    tf_mat_input = np.zeros((len(test_loader),6))
+    tf_mat_output = np.zeros((len(test_loader),6))
+    j = 0
+
     for i,batch in enumerate(test_loader):
         rgb_img = batch['img'].to(device)
         B = rgb_img.size(0)
@@ -61,17 +70,66 @@ def test(args,chkpt:dict,test_loader):
         for _ in range(args.inner_iter):
             twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
             extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
+
+            miscal_pcd = uncalibed_pcd
+
             uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
             g0 = extran.bmm(g0)
         dg = g0.bmm(igt)
-        rot_dx,tsl_dx = loss_utils.gt2euler(dg.squeeze(0).cpu().detach().numpy())
+        rot_dx,tsl_dx = cv2.Rodrigues(dg.squeeze(0).cpu().detach().numpy()[:3, :3])[0], dg.squeeze(0).cpu().detach().numpy()[:3, 3]# loss_utils.gt2euler(dg.squeeze(0).cpu().detach().numpy())
         rot_dx = rot_dx.reshape(-1)
         tsl_dx = tsl_dx.reshape(-1)
         res_npy[i,:] = np.abs(np.concatenate([rot_dx,tsl_dx]))
         logger.info('[{:05d}|{:05d}],mdx:{:.4f}'.format(i+1,len(test_loader),res_npy[i,:].mean().item()))
+
+        # alternative cost
+        eps = 1e-8
+        rot_orig,tsl_orig = cv2.Rodrigues(igt.squeeze(0).cpu().detach().numpy()[:3, :3])[0], igt.squeeze(0).cpu().detach().numpy()[:3, 3] # loss_utils.gt2euler(igt.squeeze(0).cpu().detach().numpy())
+        rot_orig = rot_orig.reshape(-1)
+        tsl_orig = tsl_orig.reshape(-1)
+        t_cost_orig = tsl_orig.mean().item()
+        r_cost_orig = rot_orig.mean().item()
+        t_cost_model = tsl_dx.mean().item()
+        r_cost_model = rot_dx.mean().item()
+        t_improvement = np.abs(t_cost_model / (t_cost_orig + eps))
+        r_improvement = np.abs(r_cost_model / (r_cost_orig + eps))
+        total_improvement = (t_improvement + r_improvement) / 2
+        logger.info('[{:05d}|{:05d}],t_improvement:{:.4f},r_improvement:{:.4f},total_improvement:{:.4f}'.format(i+1,len(test_loader), t_improvement, r_improvement, total_improvement))
+        alt_res_npy[i,0] = t_improvement
+        alt_res_npy[i,1] = r_improvement
+        alt_res_npy[i,2] = total_improvement
+
+        pcd_gt = np.asarray(batch['pcd'].detach().cpu().squeeze())
+        pcd_miscalib=np.asarray(miscal_pcd.detach().cpu().squeeze())
+        pcd_corrected=np.asarray(uncalibed_pcd.detach().cpu().squeeze())
+        rgb=(np.transpose(np.asarray(rgb_img.detach().cpu().squeeze()), (1, 2, 0) ))
+
+        # vis_eval(pcd_gt=pcd_gt,
+        #          pcd_miscalib=pcd_miscalib,
+        #          pcd_corrected=pcd_corrected,
+        #          rgb=rgb,
+        #          intran=np.asarray(InTran.squeeze().detach().cpu()),
+        #          savePath='visualisation_test',
+        #          saveName='frame' + str(i) + '.png',
+        #          igt=igt.squeeze().detach().cpu(),
+        #          networkOutput=g0.squeeze().detach().cpu())
+        
+        for b in range(batch['igt'].size(0)):
+            tf_mat_input[j+b,0:3],tf_mat_input[j+b,3:] = loss_utils.gt2euler(batch['igt'][b,:,:].squeeze(0).cpu().detach().numpy())
+            tf_mat_output[j+b,0:3],tf_mat_output[j+b,3:] = loss_utils.gt2euler(g0[b,:,:].squeeze(0).cpu().detach().numpy())
+        j+=batch['igt'].size(0)
+        
     np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name))),res_npy)
     logger.info('Angle error (deg): X:{:.4f},Y:{:.4f},Z:{:.4f}'.format(*np.degrees(np.mean(res_npy[:,:3],axis=0))))
     logger.info('Translation error (m): X:{:.4f},Y:{:.4f},Z:{:.4f}'.format(*np.mean(res_npy[:,3:],axis=0)))
+
+    # Alternative Cost
+    logger.info('Translation Improvement: {:.4f}'.format(np.mean(alt_res_npy[:,0],axis=0)))
+    logger.info('Rotation  Improvement: {:.4f}'.format(np.mean(alt_res_npy[:,1],axis=0)))
+    logger.info('Total Improvement: {:.4f}'.format(np.mean(alt_res_npy[:,2],axis=0)))
+
+    printStatistics(tf_mat=tf_mat_input, fileName='StatisticsInput.png')
+    printStatistics(tf_mat=tf_mat_output, fileName='StatisticsOutput.png')
 
 if __name__ == "__main__":
     args = options()
@@ -96,12 +154,7 @@ if __name__ == "__main__":
         raise FileNotFoundError('pretrained checkpoint {:s} not found!'.format(os.path.abspath(args.pretrained)))
     print_highlight('args have been received, please wait for dataloader...')
     
-    test_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
-
-    # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
-    #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-    #                                  pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-    #                                  extend_ratio=CONFIG['dataset']['extend_ratio'])
+    test_split = ['02']# [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
 
     test_dataset = BaseKITTIDataset(basedir=args.dataset_path,
                                     batch_size=args.batch_size,
@@ -113,9 +166,11 @@ if __name__ == "__main__":
                                     pcd_sample_num=args.pcd_sample,
                                     resize_ratio=args.resize_ratio,
                                     extend_intran=CONFIG['dataset']['extend_ratio'])
+    
     os.makedirs(args.res_dir,exist_ok=True)
     test_perturb_file = os.path.join(args.checkpoint_dir,"test_seq.csv")
     test_length = len(test_dataset)
+    
     if not os.path.exists(test_perturb_file):
         print_highlight("validation pertub file dosen't exist, create one.")
         transform = utils.transform.UniformTransformSE3(args.max_deg,args.max_tran,args.mag_randomly)
