@@ -10,6 +10,8 @@ import loss as loss_utils
 import utils
 import numpy as np
 
+from utils.visualizations import vis_eval
+
 def options():
     parser = argparse.ArgumentParser()
     # dataset
@@ -62,6 +64,9 @@ def test(args,chkpt:dict,test_loader):
         for _ in range(args.inner_iter):
             twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
             extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
+
+            miscal_pcd = uncalibed_pcd
+
             uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
             g0 = extran.bmm(g0)
         dg = g0.bmm(igt)
@@ -72,7 +77,6 @@ def test(args,chkpt:dict,test_loader):
         logger.info('[{:05d}|{:05d}],mdx:{:.4f}'.format(i+1,len(test_loader),res_npy[i,:].mean().item()))
 
         # alternative cost
-        
         eps = 1e-8
         rot_orig,tsl_orig = loss_utils.gt2euler(igt.squeeze(0).cpu().detach().numpy())
         rot_orig = rot_orig.reshape(-1)
@@ -89,7 +93,18 @@ def test(args,chkpt:dict,test_loader):
         alt_res_npy[i,1] = r_improvement
         alt_res_npy[i,2] = total_improvement
 
+        pcd_gt = np.asarray(batch['pcd'].detach().cpu().squeeze() )
+        pcd_miscalib=np.asarray(miscal_pcd.detach().cpu().squeeze())
+        pcd_corrected=np.asarray(uncalibed_pcd.detach().cpu().squeeze())
+        rgb=(np.transpose(np.asarray(rgb_img.detach().cpu().squeeze()), (1, 2, 0) ))
 
+        vis_eval(pcd_gt=pcd_gt,
+                 pcd_miscalib=pcd_miscalib,
+                 pcd_corrected=pcd_corrected,
+                 rgb=rgb,
+                 intran=np.asarray(InTran.squeeze().detach().cpu()),
+                 savePath='visualisation_test',
+                 saveName='frame' + str(i) + '.png')
     np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name))),res_npy)
     logger.info('Angle error (deg): X:{:.4f},Y:{:.4f},Z:{:.4f}'.format(*np.degrees(np.mean(res_npy[:,:3],axis=0))))
     logger.info('Translation error (m): X:{:.4f},Y:{:.4f},Z:{:.4f}'.format(*np.mean(res_npy[:,3:],axis=0)))
@@ -124,11 +139,6 @@ if __name__ == "__main__":
     
     test_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['test']]
 
-    # test_dataset = BaseKITTIDataset(args.dataset_path,args.batch_size,test_split,CONFIG['dataset']['cam_id'],
-    #                                  skip_frame=args.skip_frame,voxel_size=CONFIG['dataset']['voxel_size'],
-    #                                  pcd_sample_num=args.pcd_sample,resize_ratio=args.resize_ratio,
-    #                                  extend_ratio=CONFIG['dataset']['extend_ratio'])
-
     test_dataset = BaseONCEDataset(basedir=args.dataset_path,
                                     batch_size=args.batch_size,
                                     seqs=['000076'],
@@ -138,6 +148,7 @@ if __name__ == "__main__":
                                     pcd_sample_num=args.pcd_sample,
                                     resize_ratio=args.resize_ratio,
                                     extend_intran=CONFIG['dataset']['extend_ratio'])
+    
     
     os.makedirs(args.res_dir,exist_ok=True)
     test_perturb_file = os.path.join(args.checkpoint_dir,"test_seq.csv")
