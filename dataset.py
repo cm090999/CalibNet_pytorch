@@ -433,33 +433,89 @@ class BaseONCEDataset(Dataset):
         
 if __name__ == "__main__":
     import matplotlib
-    matplotlib.use('Agg')
+    # matplotlib.use('Agg')
+    matplotlib.use('TkAgg')
     from matplotlib import pyplot as plt
-    once_base_dataset = BaseONCEDataset(basedir='ONCE/data',
-                                        batch_size=1,
-                                        skip_frame=2,
-                                        cam_id=1)
-    once_base_data_pert = KITTI_perturb(dataset=once_base_dataset,
-                                        max_deg=10,
-                                        max_tran=3)
-    base_dataset = BaseKITTIDataset('KITTI_Odometry_Full',1,seqs=['00','01'],skip_frame=3)
-    dataset = KITTI_perturb(base_dataset,30,3)
-    data = once_base_data_pert[2]
-    for key,value in data.items():
-        if isinstance(value,torch.Tensor):
-            shape = value.size()
-        else:
-            shape = value
-        print('{key}: {shape}'.format(key=key,shape=shape))
-    plt.figure()
-    plt.subplot(1,3,1)
-    plt.imshow(data['depth_img'].squeeze(0).numpy(), cmap='gray')
-    plt.subplot(1,3,2)
-    plt.imshow(data['uncalibed_depth_img'].squeeze(0).numpy(), cmap='gray')
-    plt.subplot(1,3,3)
-    plt.imshow(np.moveaxis(data['img'].squeeze(0).numpy(),0,-1))
-    plt.savefig('dataset_demo.png', dpi = 800)
-    
-        
+    # once_base_dataset = BaseONCEDataset(basedir='ONCE/data',
+    #                                     batch_size=1,
+    #                                     skip_frame=2,
+    #                                     cam_id=1)
+    # once_base_data_pert = KITTI_perturb(dataset=once_base_dataset,
+    #                                     max_deg=10,
+    #                                     max_tran=3)
+    # base_dataset = BaseKITTIDataset('KITTI_Odometry_Full',1,seqs=['00','01'],skip_frame=3)
+    # dataset = KITTI_perturb(base_dataset,30,3)
+    # data = once_base_data_pert[2]
+    # for key,value in data.items():
+    #     if isinstance(value,torch.Tensor):
+    #         shape = value.size()
+    #     else:
+    #         shape = value
+    #     print('{key}: {shape}'.format(key=key,shape=shape))
+    # plt.figure()
+    # plt.subplot(1,3,1)
+    # plt.imshow(data['depth_img'].squeeze(0).numpy(), cmap='gray')
+    # plt.subplot(1,3,2)
+    # plt.imshow(data['uncalibed_depth_img'].squeeze(0).numpy(), cmap='gray')
+    # plt.subplot(1,3,3)
+    # plt.imshow(np.moveaxis(data['img'].squeeze(0).numpy(),0,-1))
+    # plt.savefig('dataset_demo.png', dpi = 800)
 
-        
+    from torch.utils.data import DataLoader
+    import loss as loss_utils
+
+    datasetpath = 'KITTI_Odometry_Full'
+    seqs = ['02']
+
+    dataset = BaseKITTIDataset(basedir=datasetpath,
+                               batch_size=1,
+                               seqs=seqs)
+    dataset_pert = KITTI_perturb(dataset=dataset,
+                                 max_deg=10,
+                                 max_tran=0.1,
+                                 mag_randomly=True,
+                                 file='checkpoint/test_seq.csv')
+    dataloader = DataLoader(dataset=dataset_pert,
+                            batch_size=20,
+                            num_workers=12)
+    
+    n = len(dataset_pert)
+    tf_mat = np.zeros((n,6))
+    j = 0
+    for batch in dataloader:
+        for b in range(batch['igt'].size(0)):
+            tf_mat[j+b,0:3],tf_mat[j+b,3:] = loss_utils.gt2euler(batch['igt'][b,:,:].squeeze(0).cpu().detach().numpy())
+
+        # tf_mat[j:j+batch['igt'].size(0),:,:] = batch['igt']
+        j+=batch['igt'].size(0)
+        print(j)
+
+    dist_tran = tf_mat[:,3:]
+    dist_tran_abs = dist_tran.mean(axis = 1)
+
+    dist_rot = tf_mat[:,0:3]
+    dist_rot_abs = np.degrees(dist_rot.mean(axis=1))
+
+    # Create a figure and subplots
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=False)
+
+    # Plot the distribution of translations
+    ax1.hist(dist_tran_abs, bins=50, density=True, alpha=0.7)
+    ax1.set_xlabel('Translational Perturbation in [m]')
+    ax1.set_ylabel('Probability Density')
+    ax1.set_title('Distribution of Translations')
+
+    # Plot the distribution of rotations
+    ax2.hist(dist_rot_abs, bins=50, density=True, alpha=0.7)
+    ax2.set_xlabel('Rotational Perturbation in [Deg]')
+    ax2.set_ylabel('Probability Density')
+    ax2.set_title('Distribution of Rotations')
+
+    plt.tight_layout()  # Adjust the spacing between subplots
+
+    # Show the plot
+    plt.show()
+
+    plt.savefig('perturbation_distribution.png', dpi = 500)
+
+    pass
