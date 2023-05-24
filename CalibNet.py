@@ -84,23 +84,23 @@ class CalibNet_DINOV2(nn.Module):
         
         # aggregate features
         self.fc1 = nn.Linear(768,512)
-        self.bn1 = nn.BatchNorm1d(512)
+        self.bn1 = nn.LayerNorm(512)
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(512,256)
-        self.bn2 = nn.BatchNorm1d(256)
+        self.bn2 = nn.LayerNorm(256)
 
         # Tranlation
         self.fc_t1 = nn.Linear(256,128)
-        self.bn_t1 = nn.BatchNorm1d(128)
+        self.bn_t1 = nn.LayerNorm(128)
         self.relu_t1 = nn.ReLU()
-        self.drop_t1 = nn.Dropout(p=0.5)
+        self.drop_t1 = nn.Dropout(p=0.2)
         self.fc_t2 = nn.Linear(128,3)
 
         # Rotation
         self.fc_r1 = nn.Linear(256,128)
-        self.bn_r1 = nn.BatchNorm1d(128)
+        self.bn_r1 = nn.LayerNorm(128)
         self.relu_r1 = nn.ReLU()
-        self.drop_r1 = nn.Dropout(p=0.5)
+        self.drop_r1 = nn.Dropout(p=0.2)
         self.fc_r2 = nn.Linear(128,3)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -122,9 +122,9 @@ class CalibNet_DINOV2(nn.Module):
         depth_3[:, 2, :, :] = depth[:, 0, :, :]
 
         # resize input
-        rgb_res = resizeToMultiple(rgb,14)
-        depth_res = resizeToMultiple(depth_3,14)
-        x1,x2 = rgb_res,depth_res.clone()  # clone dpeth, or it will change depth in '/' operation
+        # rgb_res = resizeToMultiple(rgb,14)
+        # depth_res = resizeToMultiple(depth_3,14)
+        x1,x2 = rgb,depth_3.clone()  # clone dpeth, or it will change depth in '/' operation
         x2 /= self.scale
 
         x1 = x1.to(self.device)
