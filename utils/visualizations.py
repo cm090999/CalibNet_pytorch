@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 def vis_eval(pcd_gt, pcd_miscalib, pcd_corrected, rgb, intran, savePath = None,saveName = None, igt = None, networkOutput = None):
@@ -96,3 +98,215 @@ def printStatistics(tf_mat, fileName = None):
         plt.savefig(fileName, dpi = 500)
 
     return
+
+def plotTestStats(igt: np.ndarray, recalib: np.ndarray, rgb_embedd: np.ndarray, depth_embedd: np.ndarray):
+    samples,_,_ = np.shape(igt)
+    i = 0
+
+    fig = make_subplots(rows=2,cols=1,
+                        specs=[[{"type": "scatter3d"}           ],
+                               [{"type": "scatter"}]],
+                               subplot_titles=('Model Predicted vs Ground Truth Coordinate Transform',
+                                    'DINOV2 Embeddings'))
+
+    samples = samples // 10
+    for i in range(samples):   
+    
+        # Plot Affine Transformation
+        # Origin
+        coordinate_origin_x = np.array([[0,0,0],[0.1,0,0]])
+        coordinate_origin_y = np.array([[0,0,0],[0,0.1,0]])
+        coordinate_origin_z = np.array([[0,0,0],[0,0,0.1]])
+
+        # Ground Truth 
+        igt_Rot = np.linalg.inv(igt[i,:3,:3])
+        igt_t = -igt[i,:3,3]*0
+        orig_frame1 = np.eye(3) / 10
+        rotd_frame = np.matmul(igt_Rot,orig_frame1)
+        t_rotd_frame = rotd_frame + igt_t.T
+        coordinate_origin_x_tf = np.array([igt_t.T,t_rotd_frame[:,0] ])
+        coordinate_origin_y_tf = np.array([igt_t.T,t_rotd_frame[:,1] ])
+        coordinate_origin_z_tf = np.array([igt_t.T,t_rotd_frame[:,2] ])
+
+        # Model Output
+        recalib_Rot = recalib[i,:3,:3]
+        recalib_t = recalib[i,:3,3]*0
+        orig_frame2 = np.eye(3) / 10
+        rotd_frame_m = np.matmul(recalib_Rot,orig_frame2)
+        t_rotd_frame_m = rotd_frame_m + recalib_t.T
+        coordinate_origin_x_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,0] ])
+        coordinate_origin_y_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,1] ])
+        coordinate_origin_z_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,2] ])
+ 
+        # Define Scatter TF
+        origin_frame_x = go.Scatter3d(x=coordinate_origin_x[:,0],y=coordinate_origin_x[:,1],z=coordinate_origin_x[:,2],mode='lines',line=dict(color="#FF0000"), name="X Origin " + str(i))
+        origin_frame_y = go.Scatter3d(x=coordinate_origin_y[:,0],y=coordinate_origin_y[:,1],z=coordinate_origin_y[:,2],mode='lines',line=dict(color="#00FF00"), name="Y Origin " + str(i))
+        origin_frame_z = go.Scatter3d(x=coordinate_origin_z[:,0],y=coordinate_origin_z[:,1],z=coordinate_origin_z[:,2],mode='lines',line=dict(color="#0000FF"), name="Z Origin " + str(i))
+        gt_frame_x = go.Scatter3d(x=coordinate_origin_x_tf[:,0],y=coordinate_origin_x_tf[:,1],z=coordinate_origin_x_tf[:,2],mode='lines',line=dict(color="#FF0000", width=6, dash = 'dot'), name="X GT " + str(i))
+        gt_frame_y = go.Scatter3d(x=coordinate_origin_y_tf[:,0],y=coordinate_origin_y_tf[:,1],z=coordinate_origin_y_tf[:,2],mode='lines',line=dict(color="#00FF00", width=6, dash = 'dot'), name="Y GT " + str(i))
+        gt_frame_z = go.Scatter3d(x=coordinate_origin_z_tf[:,0],y=coordinate_origin_z_tf[:,1],z=coordinate_origin_z_tf[:,2],mode='lines',line=dict(color="#0000FF", width=6, dash = 'dot'), name="Z GT " + str(i))
+        md_frame_x = go.Scatter3d(x=coordinate_origin_x_tf_m[:,0],y=coordinate_origin_x_tf_m[:,1],z=coordinate_origin_x_tf_m[:,2],mode='lines',line=dict(color="#FF0000", width=6, dash = 'dash'), name="X Model " + str(i))
+        md_frame_y = go.Scatter3d(x=coordinate_origin_y_tf_m[:,0],y=coordinate_origin_y_tf_m[:,1],z=coordinate_origin_y_tf_m[:,2],mode='lines',line=dict(color="#00FF00", width=6, dash = 'dash'), name="Y Model " + str(i))
+        md_frame_z = go.Scatter3d(x=coordinate_origin_z_tf_m[:,0],y=coordinate_origin_z_tf_m[:,1],z=coordinate_origin_z_tf_m[:,2],mode='lines',line=dict(color="#0000FF", width=6, dash = 'dash'), name="Z Model " + str(i))
+
+        # Define Scatter Embeddings 
+        rgb_embeddings_scatter = go.Scatter(x=np.arange(len(rgb_embedd[i,:])), y=rgb_embedd[i,:], name="RGB Image Embeddings " + str(i))
+        dep_embeddings_scatter = go.Scatter(x=np.arange(len(depth_embedd[i,:])), y=depth_embedd[i,:], name="Depth Image Embeddings " + str(i))
+
+        # Embedding Traces
+        fig.add_trace(
+                    rgb_embeddings_scatter,
+                    row=2, col=1
+                    )
+        fig.add_trace(
+                    dep_embeddings_scatter,
+                    row=2, col=1
+                    )
+
+        # GT Coordinates Frame Traces 
+        fig.add_trace(
+                    origin_frame_x,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    origin_frame_y,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    origin_frame_z,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    md_frame_x,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    md_frame_y,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    md_frame_z,
+                    row=1,col=1
+                    )
+        
+        # Model Output Coordinates Frame Traces
+        fig.add_trace(
+                    origin_frame_x,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    origin_frame_y,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    origin_frame_z,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    gt_frame_x,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    gt_frame_y,
+                    row=1,col=1
+                    )
+        fig.add_trace(
+                    gt_frame_z,
+                    row=1,col=1
+                    ) 
+            
+        
+        fig.update_layout(scene=dict(aspectmode="cube"))
+        fig.update_layout(scene=dict(
+        xaxis=dict(range=[-0.2, 0.2]),
+        yaxis=dict(range=[-0.2, 0.2]),
+        zaxis=dict(range=[-0.2, 0.2]),
+        ))
+        # fig.update_layout(scene2=dict(aspectmode="cube"))
+        # fig.update_layout(scene2=dict(
+        # xaxis=dict(range=[-0.2, 0.2]),
+        # yaxis=dict(range=[-0.2, 0.2]),
+        # zaxis=dict(range=[-0.2, 0.2]),
+        # ))
+
+    steps = []
+    for s in range(samples):
+
+        # # Ground Truth 
+        # igt_Rot = igt[s,:3,:3]
+        # igt_t = igt[s,:3,3]
+        # orig_frame1 = np.eye(3) / 10
+        # rotd_frame = np.matmul(igt_Rot,orig_frame1)
+        # t_rotd_frame = rotd_frame + igt_t
+        # coordinate_origin_x_tf = np.array([igt_t.T,t_rotd_frame[:,0] ])
+        # coordinate_origin_y_tf = np.array([igt_t.T,t_rotd_frame[:,1] ])
+        # coordinate_origin_z_tf = np.array([igt_t.T,t_rotd_frame[:,2] ])
+
+        # # Model Output
+        # recalib_Rot = recalib[s,:3,:3]
+        # recalib_t = recalib[s,:3,3]
+        # orig_frame2 = np.eye(3) / 10
+        # rotd_frame_m = np.matmul(recalib_Rot,orig_frame2)
+        # t_rotd_frame_m = rotd_frame_m + recalib_t
+        # coordinate_origin_x_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,0] ])
+        # coordinate_origin_y_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,1] ])
+        # coordinate_origin_z_tf_m = np.array([recalib_t.T,t_rotd_frame_m[:,2] ])
+
+        # # # Define Scatter TF
+        # # origin_frame_x = go.Scatter3d(x=coordinate_origin_x[:,0],y=coordinate_origin_x[:,1],z=coordinate_origin_x[:,2],mode='lines',line=dict(color="#FF0000"), name="X Origin")
+        # # origin_frame_y = go.Scatter3d(x=coordinate_origin_y[:,0],y=coordinate_origin_y[:,1],z=coordinate_origin_y[:,2],mode='lines',line=dict(color="#00FF00"), name="Y Origin")
+        # # origin_frame_z = go.Scatter3d(x=coordinate_origin_z[:,0],y=coordinate_origin_z[:,1],z=coordinate_origin_z[:,2],mode='lines',line=dict(color="#0000FF"), name="Z Origin")
+        # # gt_frame_x = go.Scatter3d(x=coordinate_origin_x_tf_m[:,0],y=coordinate_origin_x_tf_m[:,1],z=coordinate_origin_x_tf_m[:,2],mode='lines',line=dict(color="#FF0000"), name="X GT")
+        # # gt_frame_y = go.Scatter3d(x=coordinate_origin_y_tf_m[:,0],y=coordinate_origin_y_tf_m[:,1],z=coordinate_origin_y_tf_m[:,2],mode='lines',line=dict(color="#00FF00"), name="Y GT")
+        # # gt_frame_z = go.Scatter3d(x=coordinate_origin_z_tf_m[:,0],y=coordinate_origin_z_tf_m[:,1],z=coordinate_origin_z_tf_m[:,2],mode='lines',line=dict(color="#0000FF"), name="Z GT")
+        # # md_frame_x = go.Scatter3d(x=coordinate_origin_x_tf[:,0],y=coordinate_origin_x_tf[:,1],z=coordinate_origin_x_tf[:,2],mode='lines',line=dict(color="#FF0000"), name="X Model")
+        # # md_frame_y = go.Scatter3d(x=coordinate_origin_y_tf[:,0],y=coordinate_origin_y_tf[:,1],z=coordinate_origin_y_tf[:,2],mode='lines',line=dict(color="#00FF00"), name="Y Model")
+        # # md_frame_z = go.Scatter3d(x=coordinate_origin_z_tf[:,0],y=coordinate_origin_z_tf[:,1],z=coordinate_origin_z_tf[:,2],mode='lines',line=dict(color="#0000FF"), name="Z Model")
+
+        # # # Define Scatter Embeddings 
+        # # rgb_embeddings_scatter = go.Scatter(x=np.arange(len(rgb_embedd[i,:])), y=rgb_embedd[i,:], name="RGB Image Embeddings")
+        # # dep_embeddings_scatter = go.Scatter(x=np.arange(len(depth_embedd[i,:])), y=depth_embedd[i,:], name="Depth Image Embeddings")
+
+        # fig.data[0].x = np.arange(len(rgb_embedd[s,:]))
+        # fig.data[0].y = rgb_embedd[s,:]
+        # fig.data[1].x = np.arange(len(depth_embedd[s,:]))
+        # fig.data[1].y = depth_embedd[s,:]
+
+        visible = [False] * (14 * samples)  # Initialize visibility list for all traces
+        visible[(s * 14):((s + 1) * 14)] = [True] * 14  # Set visibility for the traces of the selected sample
+
+        step = dict(
+            method="update",
+            args=[{"visible": visible}],  # Update visibility
+            label=f"Sample {s}"
+        )
+
+        steps.append(step)
+
+    sliders = [dict(
+        active=0,
+        currentvalue={"prefix": "Sample: "},
+        pad={"t": 50},
+        steps=steps
+    )]
+
+    fig.update_layout(sliders=sliders)
+
+    fig.write_html('results_plotly.html')
+
+    fig.show()  
+
+    return
+
+if __name__ == "__main__":
+
+    dep_dinov2 = np.load('res/dep_dinov2.npy')
+    igt_npy = np.load('res/igt_npy.npy')
+    recalib_npy = np.load('res/recalib_npy.npy')
+    res_npy = np.load('res/res_npy.npy')
+    rgb_dinov2 = np.load('res/rgb_dinov2.npy')
+
+    plotTestStats(igt=igt_npy,
+                  recalib=recalib_npy,
+                  rgb_embedd=rgb_dinov2,
+                  depth_embedd=dep_dinov2)
