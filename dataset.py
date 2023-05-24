@@ -104,7 +104,7 @@ class ToTensor:
 class BaseKITTIDataset(Dataset):
     def __init__(self,basedir:str,batch_size:int,seqs=['09','10'],cam_id:int=2,
                  meta_json='data_len.json',skip_frame=1,
-                 voxel_size=0.3,pcd_sample_num=4096,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),
+                 voxel_size=0.3,pcd_sample_num=4096,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14
                  ):
         if not os.path.exists(os.path.join(basedir,meta_json)):
             check_length(basedir,meta_json)
@@ -130,6 +130,7 @@ class BaseKITTIDataset(Dataset):
         self.img_tran = Tf.ToTensor()
         self.pcd_tran = KITTIFilter(voxel_size,'none')
         self.extend_intran = extend_intran
+        self.mult = mult
         
     def __len__(self):
         return self.sumsep[-1]
@@ -148,7 +149,8 @@ class BaseKITTIDataset(Dataset):
         group_id = np.digitize(index,self.sumsep,right=False)
         data = self.kitti_datalist[group_id]
         T_cam2velo = getattr(data.calib,'T_cam%d_velo'%self.cam_id)
-        K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ getattr(data.calib,'K_cam%d'%self.cam_id)       
+        # K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ getattr(data.calib,'K_cam%d'%self.cam_id)     
+        K_cam = getattr(data.calib,'K_cam%d'%self.cam_id)  
         if group_id > 0:
             sub_index = index - self.sumsep[group_id-1]
         else:
@@ -157,12 +159,25 @@ class BaseKITTIDataset(Dataset):
         H,W = raw_img.height, raw_img.width
         RH = round(H*self.resize_ratio[0])
         RW = round(W*self.resize_ratio[1])
+
+        RH = ((RH // self.mult) + 1) * self.mult
+        RW = ((RW // self.mult) + 1) * self.mult
+
+        K_cam[0, 0] *= RW / W
+        K_cam[0, 2] *= RW / W
+        K_cam[1, 1] *= RH / H
+        K_cam[1, 2] *= RH / H
+
         REVH,REVW = self.extend_intran[0]*RH,self.extend_intran[1]*RW
         K_cam_extend = K_cam.copy()
         K_cam_extend[0,-1] *= self.extend_intran[0]
         K_cam_extend[1,-1] *= self.extend_intran[1]
         raw_img = raw_img.resize([RW,RH],Image.BILINEAR)
         _img = self.img_tran(raw_img)  # raw img input (3,H,W)
+
+        # Resize image and adapt K_cam
+        # _img, K_cam = resizeToMultiple(_img, K_cam, 14)
+
         pcd = data.get_velo(sub_index)
         pcd[:,3] = 1.0  # (N,4)
         calibed_pcd = T_cam2velo @ pcd.T  # [4,4] @ [4,N] -> [4,N]
@@ -297,10 +312,11 @@ class KITTI_Perturb_rangeImage(KITTI_perturb):
 
 class BaseONCEDataset(Dataset):
     def __init__(self,basedir:str,batch_size:int,seqs=['000076','000080'],cam_id:int=1,skip_frame=1,
-                 voxel_size=0.3,pcd_sample_num=20000,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),
+                 voxel_size=0.3,pcd_sample_num=20000,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14
                  ):
         
         self.skip_frame = skip_frame
+        self.mult = mult
         
         self.base_dir = basedir
         self.seqs = seqs
@@ -361,7 +377,7 @@ class BaseONCEDataset(Dataset):
     
     def __getitem__(self, index):
 
-        downsample = 0.5
+        # downsample = 0.5
 
         # Get image and lidar for given index
         curr_drive = None
@@ -378,41 +394,60 @@ class BaseONCEDataset(Dataset):
         lidr_pth = self.lidar_pths[curr_drive][idx_loc]
         calib_data = self.calibdata[curr_drive]
 
-        K_cam_orig = np.array(calib_data['cam_intrinsic'])
+        K_cam = np.array(calib_data['cam_intrinsic'])
         dist = np.array(calib_data['distortion'])
 
         raw_img_dis = Image.open(cam_pth).convert('RGB')
-        raw_img = cv2.undistort(np.asarray(raw_img_dis),K_cam_orig,distCoeffs=dist)
+        raw_img = cv2.undistort(np.asarray(raw_img_dis),K_cam,distCoeffs=dist)
+        raw_img = Image.fromarray(raw_img)
         pcd = np.fromfile(lidr_pth, dtype=np.float32).reshape((-1,4))
 
-        K_cam_orig = K_cam_orig * downsample
-        K_cam_orig[2,2] = 1
-        K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ K_cam_orig
+        # K_cam_orig = K_cam_orig * downsample
+        # K_cam_orig[2,2] = 1
+        # K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ K_cam
         
         T_cam2velo = np.array(calib_data['cam_to_velo'])
 
-        # T_cam2velo[:3,-1] = -T_cam2velo[:3,-1]
-        # rotmat = np.linalg.inv(T_cam2velo[:3,:3])
-        # T_cam2velo[:3,:3] = rotmat
-
-        
-
-        
-        h,w,c = np.shape(raw_img)
-        h = int(h*downsample)
-        w = int(w*downsample)
-        raw_img = cv2.resize(raw_img,(w,h), np.zeros((4,1)),interpolation=cv2.INTER_NEAREST)
-        raw_img = Image.fromarray(raw_img)
-
+        # H,W,_ = np.shape(raw_img)
         H,W = raw_img.height, raw_img.width
         RH = round(H*self.resize_ratio[0])
         RW = round(W*self.resize_ratio[1])
+
+        RH = ((RH // self.mult) + 1) * self.mult
+        RW = ((RW // self.mult) + 1) * self.mult
+
+        K_cam[0, 0] *= RW / W
+        K_cam[0, 2] *= RW / W
+        K_cam[1, 1] *= RH / H
+        K_cam[1, 2] *= RH / H
+
         REVH,REVW = self.extend_intran[0]*RH,self.extend_intran[1]*RW
         K_cam_extend = K_cam.copy()
         K_cam_extend[0,-1] *= self.extend_intran[0]
         K_cam_extend[1,-1] *= self.extend_intran[1]
         raw_img = raw_img.resize([RW,RH],Image.BILINEAR)
+
         _img = self.img_tran(raw_img)  # raw img input (3,H,W)
+
+        
+        # h,w,c = np.shape(raw_img)
+        # h = int(h*downsample)
+        # w = int(w*downsample)
+        # raw_img = cv2.resize(raw_img,(w,h), np.zeros((4,1)),interpolation=cv2.INTER_NEAREST)
+        # raw_img = Image.fromarray(raw_img)
+
+        # H,W = raw_img.height, raw_img.width
+        # RH_ = round(H*self.resize_ratio[0])
+        # RW_ = round(W*self.resize_ratio[1])
+        # RH = ((RH_ // self.mult) + 1) * self.mult
+        # RW = ((RW_ // self.mult) + 1) * self.mult
+
+        # REVH,REVW = self.extend_intran[0]*RH,self.extend_intran[1]*RW
+        # K_cam_extend = K_cam.copy()
+        # K_cam_extend[0,-1] *= self.extend_intran[0]
+        # K_cam_extend[1,-1] *= self.extend_intran[1]
+        # raw_img = raw_img.resize([RW,RH],Image.BILINEAR)
+        # _img = self.img_tran(raw_img)  # raw img input (3,H,W)
         pcd[:,3] = 1.0  # (N,4)
         calibed_pcd = (T_cam2velo @ pcd.T)[:3,:] # [4,4] @ [4,N] -> [4,N]
         _calibed_pcd = self.pcd_tran(calibed_pcd[:3,:].T).T  # raw pcd input (3,N)
@@ -429,7 +464,26 @@ class BaseONCEDataset(Dataset):
         T_cam2velo = self.tensor_tran(T_cam2velo)
 
         return dict(img=_img,pcd=_calibed_pcd,pcd_range=_pcd_range,depth_img=_depth_img,
-                    InTran=K_cam,ExTran=T_cam2velo)        
+                    InTran=K_cam,ExTran=T_cam2velo)
+
+def resizeToMultiple(image: torch.tensor, K_int: np.ndarray, mult: int):
+
+    c,height,width = image.size()
+    height_new = ((height // mult) + 1) * mult
+    width_new = ((width // mult) + 1) * mult
+
+    # Resize the image using torch.nn.functional.interpolate
+    res_image = torch.nn.functional.interpolate(image.unsqueeze(0), size=(height_new, width_new), mode='bicubic', align_corners=True)
+    res_image = res_image.squeeze(0)
+
+    # Update intrinsic calibration matrix
+    K_int_new = K_int.copy()
+    K_int_new[0, 0] *= width_new / width
+    K_int_new[0, 2] *= width_new / width
+    K_int_new[1, 1] *= height_new / height
+    K_int_new[1, 2] *= height_new / height
+
+    return res_image, K_int_new    
         
 if __name__ == "__main__":
     import matplotlib
@@ -470,11 +524,18 @@ if __name__ == "__main__":
     dataset = BaseKITTIDataset(basedir=datasetpath,
                                batch_size=1,
                                seqs=seqs)
+
+    dataset_ONCE = BaseONCEDataset(basedir='ONCE/data',
+                               batch_size=1,
+                               seqs=['000076'])
+    dataset[0]
+    dataset_ONCE[0]
     dataset_pert = KITTI_perturb(dataset=dataset,
                                  max_deg=10,
                                  max_tran=0.1,
-                                 mag_randomly=True,
-                                 file='checkpoint/test_seq.csv')
+                                 mag_randomly=False,
+                                 file=None)
+    
     dataloader = DataLoader(dataset=dataset_pert,
                             batch_size=20,
                             num_workers=12)
