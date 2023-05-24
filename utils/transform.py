@@ -4,6 +4,9 @@ import numpy as np
 from math import pi as PI
 from collections.abc import Iterable
 
+import torchgeometry as tgm
+from pyquaternion import Quaternion
+
 class RandomTransformSE3:
     """ rigid motion """
     def __init__(self, max_deg, max_tran, mag_randomly=True, concat=False):
@@ -108,6 +111,113 @@ class UniformTransformSE3:
 
     def __call__(self, tensor):
         return self.transform(tensor)
+    
+
+class UniformTransformSE3_quaternion:
+    def __init__(self, max_deg, max_tran, mag_randomly=True, concat=False):
+        self.max_deg = max_deg
+        self.max_tran = max_tran
+        self.randomly = mag_randomly
+        self.concat = concat
+        self.gt = None
+        self.igt = None
+        self.generator = torch.Generator()
+
+    def generate_transform(self):
+        if self.randomly:
+            deg = torch.rand((1), generator=self.generator).item() * self.max_deg
+            tran = torch.rand((1), generator=self.generator).item() * self.max_tran
+        else:
+            deg = self.max_deg
+            tran = self.max_tran
+
+        amp = deg * torch.pi / 180.0  # deg to rad
+        
+
+        # Generate random rotation quaternion
+        # q = tgm.random_quaternion(1)  # [1, 4]
+        # q = torch.from_numpy(Quaternion.random().q)
+        q = self.generate_random_rotation(amp)
+
+        # Generate random translation vector
+        t = torch.rand((1, 3), generator=self.generator) * 2 - 1  # [-1, 1] range
+        t = t / torch.norm(t)
+
+        # Scale rotation and translation
+        q = q * amp
+        t = t * tran
+
+        return q, t
+
+    def apply_transform(self, p0, q, t):
+        # p0: [3, N] or [6, N]
+        # q: [1, 4]
+        # t: [1, 3]
+
+        # Convert quaternion to rotation matrix
+        # R = tgm.quaternion_to_rotation_matrix(q)  # [1, 3, 3]
+        R = tgm.angle_axis_to_rotation_matrix(tgm.quaternion_to_angle_axis(q.unsqueeze(0)))[:,:3,:3] 
+
+        # Create 4x4 transformation matrix
+        G = torch.eye(4).unsqueeze(0)  # [1, 4, 4]
+        G[:, 0:3, 0:3] = R
+        G[:, 0:3, 3] = t
+
+        gt = torch.inverse(G)  # [1, 4, 4]
+        self.gt = gt.squeeze(0)  # gt: p1 -> p0
+        self.igt = G.squeeze(0)  # igt: p0 -> p1
+
+        if self.concat:
+            return torch.cat(
+                [
+                    tgm.transform_points(G, p0[:3, :]),
+                    tgm.transform_points(R, p0[3:, :]),
+                ],
+                dim=0,
+            )  # [6, N]
+        else:
+            p0_changed = p0.permute(0,2,1)
+            p0_changed_tf = tgm.transform_points(G, p0_changed)
+            p0_tf = p0_changed_tf.permute(0,2,1)
+            return p0_tf
+        
+
+    def transform(self, tensor):
+        q, t = self.generate_transform()
+        return self.apply_transform(tensor, q, t)
+
+    def __call__(self, tensor):
+        return self.transform(tensor)
+    
+
+    def generate_random_rotation(self, amp):
+        # Generate random components
+        x = 2 * torch.rand((1), generator=self.generator) - 1
+        y = 2 * torch.rand((1), generator=self.generator) - 1
+        z = 2 * torch.rand((1), generator=self.generator) - 1
+
+        # Normalize the vector
+        norm = torch.sqrt(x**2 + y**2 + z**2)
+        x /= norm
+        y /= norm
+        z /= norm
+
+        # # Get random angle
+        # ang = torch.rand(1) * amp / 180 * torch.pi
+
+        # Calculate rotation angle
+        u1 = torch.rand(1)
+        angle = amp * u1.item()
+
+        # Calculate sin and cos of half the rotation angle
+        s = np.sin(angle / 2)
+        c = np.cos(angle / 2)
+
+        # Construct quaternion
+        q = torch.tensor([c, s * x, s * y, s * z])
+
+        return q
+    
 
 class DepthImgGenerator:
     def __init__(self,img_shape:Iterable,InTran:torch.Tensor,pcd_range:torch.Tensor,pooling_size=5):
