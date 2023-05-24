@@ -8,12 +8,14 @@ import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from dataset import BaseKITTIDataset,KITTI_perturb
 from mylogger import get_logger, print_highlight, print_warning
-from CalibNet import CalibNet
+from CalibNet import CalibNet, CalibNet_DINOV2
 import loss as loss_utils
 import utils
 from tqdm import tqdm
 import numpy as np
 from utils.transform import UniformTransformSE3
+
+import matplotlib.pyplot as plt
 
 def options():
     parser = argparse.ArgumentParser()
@@ -21,24 +23,24 @@ def options():
     parser.add_argument("--config",type=str,default='config.yml')
     parser.add_argument("--dataset_path",type=str,default='KITTI_Odometry_Full/')
     parser.add_argument("--skip_frame",type=int,default=10,help='skip frame of dataset')
-    parser.add_argument("--pcd_sample",type=int,default=20000)
+    parser.add_argument("--pcd_sample",type=int,default=4096)
     parser.add_argument("--max_deg",type=float,default=10)  # 10deg in each axis  (see the paper)
     parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
     # dataloader
-    parser.add_argument("--batch_size",type=int,default=6)
+    parser.add_argument("--batch_size",type=int,default=8)
     parser.add_argument("--num_workers",type=int,default=16)
     parser.add_argument("--pin_memory",type=bool,default=True,help='set it to False if your CPU memory is insufficient')
     # schedule
     parser.add_argument("--device",type=str,default='cuda:0')
     parser.add_argument("--resume",type=str,default='')
-    parser.add_argument("--pretrained",type=str,default='')
+    parser.add_argument("--pretrained",type=str,default='checkpoint/cam2_oneiter_last.pth')
     parser.add_argument("--epoch",type=int,default=100)
     parser.add_argument("--log_dir",default='log/')
     parser.add_argument("--checkpoint_dir",type=str,default="checkpoint/")
     parser.add_argument("--name",type=str,default='cam2_oneiter')
-    parser.add_argument("--optim",type=str,default='sgd',choices=['sgd','adam'])
-    parser.add_argument("--lr0",type=float,default=5e-4)
+    parser.add_argument("--optim",type=str,default='adam',choices=['sgd','adam'])
+    parser.add_argument("--lr0",type=float,default=4e-4)
     parser.add_argument("--momentum",type=float,default=0.9)
     parser.add_argument("--weight_decay",type=float,default=5e-6)
     parser.add_argument("--lr_exp_decay",type=float,default=0.98)
@@ -47,14 +49,14 @@ def options():
     parser.add_argument("--scale",type=float,default=50.0,help='scale factor of pcd normlization in loss')
     parser.add_argument("--inner_iter",type=int,default=1,help='inner iter of calibnet')
     parser.add_argument("--alpha",type=float,default=1.0,help='weight of photo loss')
-    parser.add_argument("--beta",type=float,default=0.3,help='weight of chamfer loss')
+    parser.add_argument("--beta",type=float,default=0.03,help='weight of chamfer loss')
     parser.add_argument("--resize_ratio",type=float,nargs=2,default=[1.0,1.0])
     # if CUDA is out of memory, please reduce batch_size, pcd_sample or inner_iter
     return parser.parse_args()
 
 
 @torch.no_grad()
-def val(args,model:CalibNet,val_loader:DataLoader):
+def val(args,model:CalibNet_DINOV2,val_loader:DataLoader):
     model.eval()
     device = model.device
     tqdm_console = tqdm(total=len(val_loader),desc='Val')
@@ -97,7 +99,7 @@ def val(args,model:CalibNet,val_loader:DataLoader):
             loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
             loss = alpha*loss1 + beta*loss2
             total_loss += loss.item()
-            tqdm_console.set_postfix_str('dR:{:.4f}, dT:{:.4f},se3_loss:{:.4f}'.format(loss1,loss2,se3_loss))
+            tqdm_console.set_postfix_str('dR:{:.4f}, dT:{:.4f},se3_loss:{:.4f}'.format(loss1*alpha,loss2*beta,se3_loss))
             tqdm_console.update(1)
     total_dR /= len(val_loader)
     total_dT /= len(val_loader)
@@ -108,7 +110,10 @@ def val(args,model:CalibNet,val_loader:DataLoader):
 
 def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     device = torch.device(args.device)
-    model = CalibNet(backbone_pretrained=False,depth_scale=args.scale)
+    # model = CalibNet(backbone_pretrained=False,depth_scale=args.scale)
+    model = CalibNet_DINOV2()
+    for params in model.backbone.parameters():
+        params.requires_grad = False
     model.to(device)
     if args.optim == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(),args.lr0,momentum=args.momentum,weight_decay=args.weight_decay)
@@ -148,12 +153,14 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     alpha = float(args.alpha)
     beta = float(args.beta)
     for epoch in range(start_epoch,args.epoch):
-        model.train()
+        # model.train()
         tqdm_console = tqdm(total=len(train_loader),desc='Train')
         total_photo_loss = 0
         total_chamfer_loss = 0
         with tqdm_console:
             tqdm_console.set_description_str('Epoch: {:03d}|{:03d}'.format(epoch+1,args.epoch))
+            model.train()
+            model.backbone.eval()
             for batch in train_loader:
                 optimizer.zero_grad()
                 rgb_img = batch['img'].to(device)
@@ -162,6 +169,7 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 calibed_depth_img = batch['depth_img'].to(device)
                 calibed_pcd = batch['pcd'].to(device)
                 uncalibed_pcd = batch['uncalibed_pcd'].to(device)
+                uncalibed_pcd.requires_grad = True
                 uncalibed_depth_img = batch['uncalibed_depth_img'].to(device)
                 InTran = batch['InTran'][0].to(device)
                 igt = batch['igt'].to(device)
@@ -169,22 +177,33 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
                 # model(rgb_img,uncalibed_depth_img)
                 g0 = torch.eye(4).repeat(B,1,1).to(device)
-                model.eval()
+                # model.eval()
                 for _ in range(args.inner_iter):
+                #     activation = {}
+                #     def get_activation(name):
+                #         def hook(model, input, output):
+                #             activation[name] = output.detach()
+                #         return hook
+                #     model.fc1.register_forward_hook(get_activation('rgb_dinov2_output'))
                     twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
                     extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
                     uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
                     g0 = extran.bmm(g0)
                 dR,dT = loss_utils.geodesic_distance(g0.bmm(igt))
-                model.train()
+                # R_0, T_0 = loss_utils.geodesic_distance(g0)
+                # model.train()
+                calibed_depth_img.requires_grad = True
+                uncalibed_depth_img.requires_grad = True
+                calibed_pcd.requires_grad = True
+                
                 loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
                 loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
                 # loss2 = loss_utils.earth_mover_distance(calibed_pcd,uncalibed_pcd)
-                loss = alpha*loss1 + beta*loss2
+                loss = alpha*loss1 + beta*loss2 # R_0 + T_0# 
                 loss.backward()
                 nn.utils.clip_grad_value_(model.parameters(),args.clip_grad)
                 optimizer.step()
-                tqdm_console.set_postfix_str("p:{:.3f}, c:{:.3f}, dR:{:.3f}, dT:{:.3f}".format(loss1.item(),loss2.item(),dR.item(),dT.item()))
+                tqdm_console.set_postfix_str("p:{:.3f}, c:{:.3f}, dR:{:.3f}, dT:{:.3f}".format(loss1.item()*alpha,loss2.item()*beta,dR.item(),dT.item()))
                 tqdm_console.update()
                 total_photo_loss += loss1.item()
                 total_chamfer_loss += loss2.item()
@@ -260,6 +279,8 @@ if __name__ == "__main__":
                                   mag_randomly=args.mag_randomly,
                                   pooling_size=CONFIG['dataset']['pooling'],
                                   file=None)
+    
+    # train_dataset = torch.utils.data.Subset(train_dataset, [0,1])
     
     val_dataset = BaseKITTIDataset(basedir=args.dataset_path,
                                    batch_size=args.batch_size,
