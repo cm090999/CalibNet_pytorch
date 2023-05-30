@@ -1,4 +1,5 @@
 .venvCalib
+.venvCalibNet
 __pycache__
 data
 checkpoint
@@ -8,3 +9,7 @@ DDAD_test
 ONCE
 visualisation_test
 *.html
+pretrained_depth
+visualizations
+
+*.npy
