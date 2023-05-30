@@ -6,7 +6,7 @@ Activate the virtual environment:
 ```source .venvCalib/bin/activate```
 
 Install the dependecies:
-```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio```
+```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio torchgeometry xformers```
 
 Pytorch:
 ```pip3 install torch torchvision torchaudio```
