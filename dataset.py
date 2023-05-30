@@ -189,6 +189,10 @@ class BaseKITTIDataset(Dataset):
         u,v,r,_ = transform.pcd_projection((RH,RW),K_cam,_calibed_pcd,_pcd_range)
         _depth_img = torch.zeros(RH,RW,dtype=torch.float32)
         _depth_img[v,u] = torch.from_numpy(r).type(torch.float32)
+
+        pooling = torch.nn.MaxPool2d(kernel_size=5,stride=1,padding=(5-1)//2)
+        _depth_img = pooling(_depth_img.unsqueeze(0)).squeeze()
+
         _calibed_pcd = self.tensor_tran(_calibed_pcd)
         _pcd_range = self.tensor_tran(_pcd_range)
         K_cam = self.tensor_tran(K_cam)
