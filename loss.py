@@ -1,3 +1,4 @@
+from typing import Any
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -48,6 +49,13 @@ class ChamferDistanceLoss(nn.Module):
     def forward(self, template, source):
         p0 = template/self.scale
         p1 = source/self.scale
+
+        squerror = (p0 - p1)**2
+        squerror = squerror.mean(dim=1)
+        squerror,_ = squerror.max(dim=1)
+        squerror = squerror.mean(dim=0)
+        return squerror
+    
         # chd = chamfer_dist()
         # dist1, dist2, idx1, idx2 = chd(p0,p1)
         # loss = (torch.mean(dist1))# + (torch.mean(dist2))
@@ -61,6 +69,17 @@ class ChamferDistanceLoss(nn.Module):
             return torch.sum(chamfer_distance(p0, p1),dim=0)
     def __call__(self,template:torch.Tensor,source:torch.Tensor)->torch.Tensor:
         return self.forward(template,source)
+    
+class Geodesic_Regression_Loss(nn.Module):
+    def __init__(self) -> None:
+        super().__init__()
+        return
+    def forward(self, x:torch.Tensor)->tuple:
+        dR,dT = geodesic_distance(x)
+        return dR, dT
+    def __call__(self, x) -> Any:
+        return self.forward(x)
+
 
 
 def geodesic_distance(x:torch.Tensor,)->tuple:
