@@ -80,8 +80,8 @@ class UniformTransformSE3:
         amp = deg * PI / 180.0  # deg to rad
         w = (2*torch.rand(1, 3)-1) # / torch.norm(2*torch.rand(1, 3)-1) * amp
         t = (2*torch.rand(1, 3)-1) # / torch.norm(2*torch.rand(1, 3)-1) * tran
-        w = w / torch.norm(w) * amp
-        t = t / torch.norm(t) * tran
+        w = w * amp   / torch.norm(w)
+        t = t * tran  / torch.norm(t)
 
         # the output: twist vectors.
         R = so3.exp(w) # (N, 3) --> (N, 3, 3)
