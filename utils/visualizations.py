@@ -72,10 +72,10 @@ def get_projectedPoints(pcd,rgb,intran):
 
 def printStatistics(tf_mat, fileName = None):
     dist_tran = tf_mat[:,3:]
-    dist_tran_abs = dist_tran.mean(axis = 1)
+    dist_tran_abs = np.linalg.norm(dist_tran, axis=1)
 
     dist_rot = tf_mat[:,0:3]
-    dist_rot_abs = np.degrees(dist_rot.mean(axis=1))
+    dist_rot_abs = np.linalg.norm(np.degrees(dist_rot),axis=1)
 
     # Create a figure and subplots
     fig, (ax1, ax2) = plt.subplots(2, 1, sharex=False)
@@ -86,16 +86,24 @@ def printStatistics(tf_mat, fileName = None):
     ax1.set_ylabel('Probability Density')
     ax1.set_title('Distribution of Translations')
 
+    # Add the average line for translations
+    ax1.axvline(dist_tran_abs.mean(), color='red', linestyle='dashed', linewidth=1)
+    ax1.legend(['Average'])
+
     # Plot the distribution of rotations
     ax2.hist(dist_rot_abs, bins=50, density=True, alpha=0.7)
     ax2.set_xlabel('Rotational Perturbation in [Deg]')
     ax2.set_ylabel('Probability Density')
     ax2.set_title('Distribution of Rotations')
 
+    # Add the average line for rotations
+    ax2.axvline(dist_rot_abs.mean(), color='red', linestyle='dashed', linewidth=1)
+    ax2.legend(['Average'])
+
     plt.tight_layout()  # Adjust the spacing between subplots
 
     if fileName is not None:
-        plt.savefig(fileName, dpi = 500)
+        plt.savefig(fileName, dpi = 800)
 
     return
 
