@@ -8,7 +8,7 @@ import torch.nn as nn
 from torch.utils.data.dataloader import DataLoader
 from dataset import BaseKITTIDataset,KITTI_perturb
 from mylogger import get_logger, print_highlight, print_warning
-from CalibNet import CalibNet, CalibNet_DINOV2
+from CalibNet import CalibNet, CalibNet_DINOV2, CalibNet_DINOV2_patch
 import loss as loss_utils
 import utils
 from tqdm import tqdm
@@ -23,7 +23,7 @@ def options():
     parser.add_argument("--config",type=str,default='config.yml')
     parser.add_argument("--dataset_path",type=str,default='KITTI_Odometry_Full/')
     parser.add_argument("--skip_frame",type=int,default=10,help='skip frame of dataset')
-    parser.add_argument("--pcd_sample",type=int,default=4096)
+    parser.add_argument("--pcd_sample",type=int,default=8192)
     parser.add_argument("--max_deg",type=float,default=10)  # 10deg in each axis  (see the paper)
     parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
@@ -34,7 +34,7 @@ def options():
     # schedule
     parser.add_argument("--device",type=str,default='cuda:0')
     parser.add_argument("--resume",type=str,default='')
-    parser.add_argument("--pretrained",type=str,default='checkpoint/cam2_oneiter_last.pth')
+    parser.add_argument("--pretrained",type=str,default='checkpoint/cam2_oneiter_last.pth') #checkpoint/cam2_oneiter_last.pth
     parser.add_argument("--epoch",type=int,default=100)
     parser.add_argument("--log_dir",default='log/')
     parser.add_argument("--checkpoint_dir",type=str,default="checkpoint/")
@@ -44,19 +44,19 @@ def options():
     parser.add_argument("--momentum",type=float,default=0.9)
     parser.add_argument("--weight_decay",type=float,default=5e-6)
     parser.add_argument("--lr_exp_decay",type=float,default=0.98)
-    parser.add_argument("--clip_grad",type=float,default=2.0)
+    parser.add_argument("--clip_grad",type=float,default=2.0) 
     # setting
     parser.add_argument("--scale",type=float,default=50.0,help='scale factor of pcd normlization in loss')
     parser.add_argument("--inner_iter",type=int,default=1,help='inner iter of calibnet')
     parser.add_argument("--alpha",type=float,default=1.0,help='weight of photo loss')
-    parser.add_argument("--beta",type=float,default=0.03,help='weight of chamfer loss')
+    parser.add_argument("--beta",type=float,default=1000.0,help='weight of chamfer loss')
     parser.add_argument("--resize_ratio",type=float,nargs=2,default=[1.0,1.0])
     # if CUDA is out of memory, please reduce batch_size, pcd_sample or inner_iter
     return parser.parse_args()
 
 
 @torch.no_grad()
-def val(args,model:CalibNet_DINOV2,val_loader:DataLoader):
+def val(args,model:CalibNet_DINOV2_patch,val_loader:DataLoader):
     model.eval()
     device = model.device
     tqdm_console = tqdm(total=len(val_loader),desc='Val')
@@ -99,7 +99,7 @@ def val(args,model:CalibNet_DINOV2,val_loader:DataLoader):
             loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
             loss = alpha*loss1 + beta*loss2
             total_loss += loss.item()
-            tqdm_console.set_postfix_str('dR:{:.4f}, dT:{:.4f},se3_loss:{:.4f}'.format(loss1*alpha,loss2*beta,se3_loss))
+            tqdm_console.set_postfix_str('dR:{:.4f}, dT:{:.4f},se3_loss:{:.4f}'.format(dR,dT,se3_loss))
             tqdm_console.update(1)
     total_dR /= len(val_loader)
     total_dT /= len(val_loader)
@@ -111,7 +111,7 @@ def val(args,model:CalibNet_DINOV2,val_loader:DataLoader):
 def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     device = torch.device(args.device)
     # model = CalibNet(backbone_pretrained=False,depth_scale=args.scale)
-    model = CalibNet_DINOV2()
+    model = CalibNet_DINOV2_patch()
     for params in model.backbone.parameters():
         params.requires_grad = False
     model.to(device)
@@ -150,6 +150,7 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     del chkpt  # free memory
     photo_loss = loss_utils.Photo_Loss(args.scale)
     chamfer_loss = loss_utils.ChamferDistanceLoss(args.scale,'mean')
+    regression_loss = loss_utils.Geodesic_Regression_Loss()
     alpha = float(args.alpha)
     beta = float(args.beta)
     for epoch in range(start_epoch,args.epoch):
@@ -198,8 +199,9 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 
                 loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
                 loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
+                loss3, loss4 = regression_loss(g0.bmm(igt))
                 # loss2 = loss_utils.earth_mover_distance(calibed_pcd,uncalibed_pcd)
-                loss = alpha*loss1 + beta*loss2 # R_0 + T_0# 
+                loss = alpha*loss1 + beta*loss2 + loss3 + loss4*10
                 loss.backward()
                 nn.utils.clip_grad_value_(model.parameters(),args.clip_grad)
                 optimizer.step()
@@ -261,8 +263,14 @@ if __name__ == "__main__":
     print_highlight('args have been received, please wait for dataloader...')
     train_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['train']]
     val_split = [str(index).rjust(2,'0') for index in CONFIG['dataset']['val']]
+
+    # Load dataset config
+    with open('dataset_paths.yml','r')as f:
+        DATA : dict = yaml.load(f,yaml.SafeLoader)
+    print_highlight('args have been received, please wait for dataloader...')
+
     # dataset
-    train_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    train_dataset = BaseKITTIDataset(basedir=DATA['kitti_full'],
                                     batch_size=args.batch_size,
                                     seqs=train_split,
                                     cam_id=CONFIG['dataset']['cam_id'],
@@ -282,7 +290,7 @@ if __name__ == "__main__":
     
     # train_dataset = torch.utils.data.Subset(train_dataset, [0,1])
     
-    val_dataset = BaseKITTIDataset(basedir=args.dataset_path,
+    val_dataset = BaseKITTIDataset(basedir=DATA['kitti_full'],
                                    batch_size=args.batch_size,
                                    seqs=val_split,
                                    cam_id=CONFIG['dataset']['cam_id'],
