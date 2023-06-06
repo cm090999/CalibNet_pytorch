@@ -1,2 +1,2 @@
 kitti_full: '/home/colin/semesterThesis/CalibNet_pytorch/KITTI_Odometry_Full'
-once: /home/colin/semesterThesis/CalibNet_pytorch/ONCE
+once: /home/colin/semesterThesis/CalibNet_pytorch/ONCE/data
