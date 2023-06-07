@@ -11,9 +11,9 @@ from sklearn.decomposition import PCA
 
 import time
 
-from CalibNet import CalibNet_DINOV2, CalibNet_DINOV2_patch
+from CalibNet import CalibNet_DINOV2, CalibNet_DINOV2_patch, CalibNet_DINOV2_LTC, CalibNet_DINOV2_patch_CalAgg, CalibNet
 
-def visualize_self_attention(img: torch.Tensor, model: CalibNet_DINOV2, output_dir = '', imgName = 'attn-head'):
+def get_self_attention(img: torch.Tensor, model: CalibNet_DINOV2, output_dir = None, imgName = 'attn-head'):
     # add 2 channels to depth image
     bt,c,hd,wd = img.size()
     if c ==1:
@@ -102,10 +102,6 @@ def pca_on_patches(atts, n_components = 12):
 
     return principal_components
 
-
-
-
-
 def plot_attention(img, attention):
     n_heads = attention.shape[0]
 
@@ -127,8 +123,10 @@ def plot_attention(img, attention):
     return
 
 if __name__=="__main__":
-    from dataset import BaseKITTIDataset
+    from dataset import BaseKITTIDataset, KITTI_perturb
     from torch.utils.data import DataLoader
+
+    device = 'cuda'
 
     datasetpath =  '/home/colin/semesterThesis/CalibNet_pytorch/KITTI_Odometry_Full'
     seqs = ['02']
@@ -136,39 +134,67 @@ if __name__=="__main__":
     dataset = BaseKITTIDataset(basedir=datasetpath,
                                batch_size=1,
                                seqs=seqs,
-                               pcd_sample_num=8192,
+                               pcd_sample_num=10000,
                                resize_ratio=(1.0,1.0))
-    dataloader = DataLoader(dataset=dataset,batch_size=1)
+    dataset_perturb = KITTI_perturb(dataset=dataset,
+                                    max_deg=0.0,
+                                    max_tran=0.0)
     
-    model_dino = CalibNet_DINOV2_patch().cuda()
+    dataloader = DataLoader(dataset=dataset_perturb,batch_size=1)
+    
+    model_dino = CalibNet_DINOV2_patch_CalAgg().to(device=device)
+    model_dino.device = device
+    chkpt = torch.load('checkpoint/CalibNet_DINOV2_patch_CalAgg_no_randomCrop_ch_best.pth', map_location=device)
+    model_dino.load_state_dict(chkpt['model'])
     model_dino.eval()
+
     activation = {}
-    def get_activation(name):
+    def get_activation_backbone(name):
+        def hook1(model, input, output):
+
+            bt,c,hd,wd = input.size()
+
+            hp = hd // 14
+            wp = wd // 14
+
+            rgb_patch_att_ = output['x_norm_patchtokens'].permute(0,2,1)
+            batch,embedd, _ = rgb_patch_att_.shape
+            rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
+            activation[name] = rgb_patch_att
+
+        return hook1
+    
+    def get_activation_out(name):
         def hook(model, input, output):
             activation[name] = output
         return hook
-    model_dino.depth_pretrained.register_forward_hook(get_activation('depth_output'))
+    
+    model_dino.rgb_features.register_forward_hook(get_activation_out('rgb_output'))
+    model_dino.depth_features.register_forward_hook(get_activation_out('depth_output'))
+
     output_dir = './visualizations/attention_visualizations'
     plt.ion()
+
     for batch in dataloader:
 
-        # t1 = time.time()
-        # attentions = visualize_self_attention(batch['depth_img'].unsqueeze(1), model=model_dino, output_dir=None, imgName = 'depth8192')
-        # t2 = time.time()
-        # plot_attention(batch['depth_img'].squeeze().detach().cpu().numpy(),attention=attentions[:12,:,:])
-        # attentions_rgb = visualize_self_attention(batch['img'], model=model_dino, output_dir=None, imgName = 'depth8192')
-        # plot_attention(batch['img'].squeeze().permute(1,2,0).detach().cpu().numpy(),attention=attentions_rgb[:12,:,:])
+        model_dino(batch['img'].to(device), batch['depth_img'].to(device))
+        n = 9
 
-        t3 = time.time()
-        # atts = get_patchembeddings(batch['depth_img'].unsqueeze(1), model=model_dino, output_dir=None, imgName = 'depth8192')
-        # atts_pca = pca_on_patches(atts=atts.detach().cpu().numpy(), n_components=12)
-        t4 = time.time()
-        tmp = model_dino(batch['img'], batch['depth_img'].unsqueeze(0) )
-        plot_attention(batch['depth_img'].squeeze().detach().cpu().numpy(),attention=activation['depth_output'][-1][0,:32,:,:].squeeze().detach().cpu().numpy())
-        # atts_rgb = get_patchembeddings(batch['img'], model=model_dino, output_dir=None, imgName = 'depth8192')
-        # atts_rgb_pca = pca_on_patches(atts=atts_rgb.detach().cpu().numpy(), n_components=12)
-        # plot_attention(batch['img'].squeeze().permute(1,2,0).detach().cpu().numpy(),attention=atts_rgb_pca[:12,:,:])
+        activations_rgb = activation['rgb_output'].squeeze().detach().cpu().numpy()
+        activations_rgb = pca_on_patches(activations_rgb,n_components=n)
 
-        print(t4-t3)
+        activations_depth = activation['depth_output'].squeeze().detach().cpu().numpy()
+        activations_depth = pca_on_patches(activations_depth,n_components=n)
+
+        # activations_rgb = get_self_attention(batch['img'].to(device),model_dino)
+        # activations_depth = get_self_attention(batch['depth_img'].to(device),model_dino)
+
+        # Plot RGB features
+        plot_attention(batch['img'].squeeze().permute(1,2,0).detach().cpu().numpy(),attention=activations_rgb[:n,:,:])
+        # plot_attention(batch['img'].squeeze().permute(1,2,0).detach().cpu().numpy(),attention=activations_rgb_pca)
+
+        # Plot Depth features 
+        plot_attention(batch['depth_img'].squeeze().detach().cpu().numpy(),attention=activations_depth[:n,:,:])
+        # plot_attention(batch['depth_img'].squeeze().detach().cpu().numpy(),attention=activations_depth_pca)
 
         break
