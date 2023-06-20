@@ -61,13 +61,14 @@ class RandomTransformSE3:
 
 
 class UniformTransformSE3:
-    def __init__(self, max_deg, max_tran, mag_randomly=True, concat=False):
+    def __init__(self, max_deg, max_tran, mag_randomly=True, concat=False, axes=torch.tensor([1,1,1,1,1,1]) ):
         self.max_deg = max_deg
         self.max_tran = max_tran
         self.randomly = mag_randomly
         self.concat = concat
         self.gt = None
         self.igt = None
+        self.axes = axes
 
     def generate_transform(self):
         # return: a twist-vector
@@ -82,6 +83,8 @@ class UniformTransformSE3:
         t = (2*torch.rand(1, 3)-1) # / torch.norm(2*torch.rand(1, 3)-1) * tran
         w = w * amp   / torch.norm(w)
         t = t * tran  / torch.norm(t)
+        # w = w * self.axes[3:]
+        # t = t * self.axes[:3]
 
         # the output: twist vectors.
         R = so3.exp(w) # (N, 3) --> (N, 3, 3)
@@ -91,7 +94,7 @@ class UniformTransformSE3:
         G[:, 0:3, 3] = t
 
         x = se3.log(G) # --> (N, 6)
-        return x # [1, 6]
+        return x*self.axes # [1, 6]
 
     def apply_transform(self, p0, x):
         # p0: [3,N] or [6,N]
