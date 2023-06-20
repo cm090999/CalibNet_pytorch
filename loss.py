@@ -8,6 +8,7 @@ from utils import so3
 from scipy.spatial.transform import Rotation
 import numpy as np
 
+# import neuralnet_pytorch.metrics as nnp
 from neuralnet_pytorch.metrics import chamfer_loss
 # from chamfer_distance import ChamferDistance as chamfer_dist
 # import emd_cuda
@@ -50,16 +51,18 @@ class ChamferDistanceLoss(nn.Module):
         p0 = template/self.scale
         p1 = source/self.scale
 
-        squerror = (p0 - p1)**2
-        squerror = squerror.mean(dim=1)
-        squerror,_ = squerror.max(dim=1)
-        squerror = squerror.mean(dim=0)
-        return squerror
+        # squerror = (p0 - p1)**2
+        # squerror = torch.norm(squerror,dim=1) # / torch.norm(p0, dim=1)
+        # squerror = squerror.mean(dim=1)
+        # squerror = squerror.mean(dim=0)
+        # return squerror
     
         # chd = chamfer_dist()
         # dist1, dist2, idx1, idx2 = chd(p0,p1)
         # loss = (torch.mean(dist1))# + (torch.mean(dist2))
-        # return loss
+        loss = chamfer_loss(p0,p1,reduce=self.reduction)
+        return loss
+
         return chamfer_loss(p0, p1, reduce=self.reduction)
         if self.reduction == 'none':
             return chamfer_distance(p0, p1)
@@ -69,6 +72,49 @@ class ChamferDistanceLoss(nn.Module):
             return torch.sum(chamfer_distance(p0, p1),dim=0)
     def __call__(self,template:torch.Tensor,source:torch.Tensor)->torch.Tensor:
         return self.forward(template,source)
+    
+import sys
+sys.path.append('PyTorchEMD/')
+
+from emd import EarthMoverDistance
+
+def earth_mover_distance_(p0, p1, reduce='mean'):
+    # Calculate pairwise distances between points in p0 and p1
+    dist_matrix = torch.cdist(p0, p1, p=2)
+
+    # Solve the optimal transport problem using linear programming
+    emd_loss = torch.mean(torch.min(dist_matrix, dim=1)[0])
+
+    if reduce == 'sum':
+        emd_loss = torch.sum(emd_loss)
+    elif reduce == 'none':
+        return emd_loss
+
+    return emd_loss if reduce == 'mean' else emd_loss.mean()
+
+
+class EarthMoverDistanceLoss(nn.Module):
+    def __init__(self, scale=1.0, reduction='mean'):
+        super(EarthMoverDistanceLoss, self).__init__()
+        assert reduction in ['sum', 'mean', 'none'], 'Unknown or invalid reduction'
+        self.reduction = reduction
+        self.scale = scale
+        self.emd = EarthMoverDistance()
+
+    def forward(self, template, source):
+        p0 = template / self.scale
+        p1 = source / self.scale
+        loss = self.emd(p0, p1, transpose=True)
+        if self.reduction == 'sum':
+            return torch.sum(loss)
+        elif self.reduction == 'none':
+            return loss
+        elif self.reduction == 'mean':
+            return loss.mean()
+
+    def __call__(self, template: torch.Tensor, source: torch.Tensor) -> torch.Tensor:
+        return self.forward(template, source)
+    
     
 class Geodesic_Regression_Loss(nn.Module):
     def __init__(self) -> None:
