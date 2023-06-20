@@ -12,6 +12,7 @@ from PIL import Image
 import cv2
 
 import open3d as o3d
+import random
 
 def check_length(root:str,save_name='data_len.json'):
     seq_dir = os.path.join(root,'sequences')
@@ -104,7 +105,8 @@ class ToTensor:
 class BaseKITTIDataset(Dataset):
     def __init__(self,basedir:str,batch_size:int,seqs=['09','10'],cam_id:int=2,
                  meta_json='data_len.json',skip_frame=1,
-                 voxel_size=0.3,pcd_sample_num=4096,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14
+                 voxel_size=0.3,pcd_sample_num=4096,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14,
+                 randomCrop = 1.0
                  ):
         if not os.path.exists(os.path.join(basedir,meta_json)):
             check_length(basedir,meta_json)
@@ -131,6 +133,8 @@ class BaseKITTIDataset(Dataset):
         self.pcd_tran = KITTIFilter(voxel_size,'none')
         self.extend_intran = extend_intran
         self.mult = mult
+        self.randomCrop = randomCrop
+        self.worker_seed = torch.initial_seed() % 2**32
         
     def __len__(self):
         return self.sumsep[-1]
@@ -148,15 +152,35 @@ class BaseKITTIDataset(Dataset):
     def __getitem__(self, index):
         group_id = np.digitize(index,self.sumsep,right=False)
         data = self.kitti_datalist[group_id]
-        T_cam2velo = getattr(data.calib,'T_cam%d_velo'%self.cam_id)
+        T_cam2velo = getattr(data.calib,'T_cam%d_velo'%self.cam_id).copy()
         # K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ getattr(data.calib,'K_cam%d'%self.cam_id)     
-        K_cam = getattr(data.calib,'K_cam%d'%self.cam_id)  
+        K_cam = getattr(data.calib,'K_cam%d'%self.cam_id).copy()
         if group_id > 0:
             sub_index = index - self.sumsep[group_id-1]
         else:
             sub_index = index
-        raw_img = getattr(data,'get_cam%d'%self.cam_id)(sub_index)  # PIL Image
+        raw_img = getattr(data,'get_cam%d'%self.cam_id)(sub_index).copy()  # PIL Image
         H,W = raw_img.height, raw_img.width
+
+        if self.randomCrop <= 0.99:
+            worker_seed = self.worker_seed ^ index
+            torch.manual_seed(worker_seed)
+
+            H_crop = int(self.randomCrop * H)
+            W_crop = int(self.randomCrop * W)
+            H_init_max = H - H_crop
+            W_init_max = W - W_crop
+            W_init = torch.randint(0, W_init_max, (1,)).item()
+            H_init = torch.randint(0, H_init_max, (1,)).item()
+
+            K_cam[0, 2] -= W_init
+            K_cam[1, 2] -= H_init
+
+            H = H_crop
+            W = W_crop
+
+            raw_img = raw_img.crop((W_init, H_init, W_init + W_crop, H_init + H_crop))
+            
         RH = round(H*self.resize_ratio[0])
         RW = round(W*self.resize_ratio[1])
 
@@ -183,25 +207,30 @@ class BaseKITTIDataset(Dataset):
         calibed_pcd = T_cam2velo @ pcd.T  # [4,4] @ [4,N] -> [4,N]
         _calibed_pcd = self.pcd_tran(calibed_pcd[:3,:].T).T  # raw pcd input (3,N)
         *_,rev = transform.binary_projection((REVH,REVW),K_cam_extend,_calibed_pcd)
-        _calibed_pcd = _calibed_pcd[:,rev]  
+        _calibed_pcd = _calibed_pcd[:,rev] 
+        # try:
+        #     _calibed_pcd = self.resample_tran(_calibed_pcd.T).T  # (3,n)
+        # except ValueError as e:
+            # print("Caught ValueError:", e)
         _calibed_pcd = self.resample_tran(_calibed_pcd.T).T # (3,n)
         _pcd_range = np.linalg.norm(_calibed_pcd,axis=0)  # (n,)
         u,v,r,_ = transform.pcd_projection((RH,RW),K_cam,_calibed_pcd,_pcd_range)
         _depth_img = torch.zeros(RH,RW,dtype=torch.float32)
         _depth_img[v,u] = torch.from_numpy(r).type(torch.float32)
 
-        pooling = torch.nn.MaxPool2d(kernel_size=5,stride=1,padding=(5-1)//2)
-        _depth_img = pooling(_depth_img.unsqueeze(0)).squeeze()
+        # pooling = torch.nn.MaxPool2d(kernel_size=5,stride=1,padding=(5-1)//2)
+        # _depth_img = pooling(_depth_img.unsqueeze(0)).squeeze()
 
         _calibed_pcd = self.tensor_tran(_calibed_pcd)
         _pcd_range = self.tensor_tran(_pcd_range)
         K_cam = self.tensor_tran(K_cam)
         T_cam2velo = self.tensor_tran(T_cam2velo)
+
         return dict(img=_img,pcd=_calibed_pcd,pcd_range=_pcd_range,depth_img=_depth_img,
                     InTran=K_cam,ExTran=T_cam2velo)
 
 class KITTI_perturb(Dataset):
-    def __init__(self,dataset:BaseKITTIDataset,max_deg:float,max_tran:float,mag_randomly=True,pooling_size=5,file=None):
+    def __init__(self,dataset:BaseKITTIDataset,max_deg:float,max_tran:float,mag_randomly=True,pooling_size=5,axes=torch.tensor([1,1,1,1,1,1]), file=None, singlePerturbation = False):
         assert (pooling_size-1) % 2 == 0, 'pooling size must be odd to keep image size constant'
         self.pooling = torch.nn.MaxPool2d(kernel_size=pooling_size,stride=1,padding=(pooling_size-1)//2)
         self.dataset = dataset
@@ -209,7 +238,8 @@ class KITTI_perturb(Dataset):
         if self.file is not None:
             self.perturb = torch.from_numpy(np.loadtxt(self.file,dtype=np.float32,delimiter=','))[None,...]  # (1,N,6)
         else:
-            self.transform = transform.UniformTransformSE3(max_deg,max_tran,mag_randomly)
+            self.transform = transform.UniformTransformSE3(max_deg,max_tran,mag_randomly,axes=axes)
+        self.singlePerturbation = singlePerturbation
     def __len__(self):
         return len(self.dataset)
     def __getitem__(self, index):
@@ -221,7 +251,10 @@ class KITTI_perturb(Dataset):
             _uncalibed_pcd = self.transform(calibed_pcd[None,:,:]).squeeze(0)  # (3,N)
             igt = self.transform.igt.squeeze(0)  # (4,4)
         else:
-            igt = se3.exp(self.perturb[:,index,:])  # (1,6) -> (1,4,4)
+            if self.singlePerturbation == True:
+                igt = se3.exp(self.perturb.unsqueeze(0)[:,0,:])  # (1,6) -> (1,4,4)
+            else:
+                igt = se3.exp(self.perturb[:,index,:])  # (1,6) -> (1,4,4)
             _uncalibed_pcd = se3.transform(igt,calibed_pcd[None,...]).squeeze(0)  # (3,N)
             igt.squeeze_(0)  # (4,4)
         _uncalibed_depth_img = torch.zeros_like(data['depth_img'],dtype=torch.float32)
@@ -237,6 +270,7 @@ class KITTI_perturb(Dataset):
         data.update(new_data)
         data['depth_img'] = self.pooling(data['depth_img'][None,...])
         data['uncalibed_depth_img'] = self.pooling(data['uncalibed_depth_img'][None,...])
+
         return data
     
 
@@ -316,7 +350,7 @@ class KITTI_Perturb_rangeImage(KITTI_perturb):
 
 class BaseONCEDataset(Dataset):
     def __init__(self,basedir:str,batch_size:int,seqs=['000076','000080'],cam_id:int=1,skip_frame=1,
-                 voxel_size=0.3,pcd_sample_num=20000,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14
+                 voxel_size=0.3,pcd_sample_num=20000,resize_ratio=(0.5,0.5),extend_intran=(2.5,2.5),mult = 14,randomCrop = None
                  ):
         
         self.skip_frame = skip_frame
@@ -372,6 +406,8 @@ class BaseONCEDataset(Dataset):
         self.img_tran = Tf.ToTensor()
         self.pcd_tran = KITTIFilter(voxel_size,'none')
         self.extend_intran = extend_intran
+        self.randomCrop = randomCrop
+        self.worker_seed = torch.initial_seed() % 2**32
 
         return
         
@@ -405,15 +441,30 @@ class BaseONCEDataset(Dataset):
         raw_img = cv2.undistort(np.asarray(raw_img_dis),K_cam,distCoeffs=dist)
         raw_img = Image.fromarray(raw_img)
         pcd = np.fromfile(lidr_pth, dtype=np.float32).reshape((-1,4))
-
-        # K_cam_orig = K_cam_orig * downsample
-        # K_cam_orig[2,2] = 1
-        # K_cam = np.diag([self.resize_ratio[1],self.resize_ratio[0],1]) @ K_cam
         
         T_cam2velo = np.array(calib_data['cam_to_velo'])
 
-        # H,W,_ = np.shape(raw_img)
         H,W = raw_img.height, raw_img.width
+
+        if self.randomCrop < 1:
+            worker_seed = self.worker_seed ^ index
+            torch.manual_seed(worker_seed)
+
+            H_crop = int(self.randomCrop * H)
+            W_crop = int(self.randomCrop * W)
+            H_init_max = H - H_crop
+            W_init_max = W - W_crop
+            W_init = torch.randint(0, W_init_max, (1,)).item()
+            H_init = torch.randint(0, H_init_max, (1,)).item()
+
+            K_cam[0, 2] -= W_init
+            K_cam[1, 2] -= H_init
+
+            H = H_crop
+            W = W_crop
+
+            raw_img = raw_img.crop((W_init, H_init, W_init + W_crop, H_init + H_crop))
+
         RH = round(H*self.resize_ratio[0])
         RW = round(W*self.resize_ratio[1])
 
