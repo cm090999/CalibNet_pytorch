@@ -6,10 +6,18 @@ Activate the virtual environment:
 ```source .venvCalib/bin/activate```
 
 Install the dependecies:
-```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio torchgeometry xformers```
+```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio torchgeometry xformers ncps```
 
 Pytorch:
 ```pip3 install torch torchvision torchaudio```
+
+To get the DINOV2 model clone the repository in the current directory: 
+```git clone ```
+Install Cuda dependencies
+```pip install --extra-index-url https://pypi.nvidia.com cuml_cu11```
+Navigate into the dinov2 directory and install:
+```cd dinov2```
+```pip install .```
 
 A reduced dataset:
 ```https://polybox.ethz.ch/index.php/s/RNxImcBiUB1r3gX```
