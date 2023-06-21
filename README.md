@@ -50,6 +50,13 @@ KITTI: https://www.cvlibs.net/datasets/kitti/eval_odometry.php
 
 If the datasets are available in other locations on your device you can define the directory in dataset_paths.yml.
 
+## Setup Earth Mover Distance
+Clone the following repository and follow the setup in the respective readme:
+```
+git clone https://github.com/cm090999/PyTorchEMD.git
+```
+
+
 ## Run with scripts
 
 Multiple models can be trained or tested with the provided scripts:
