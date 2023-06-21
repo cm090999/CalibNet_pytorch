@@ -1,29 +1,72 @@
+# Semester Thesis Readme
+
 ## Quick Setup
 Clone this repository and download the weights (as instructed below). Create a virtual environment:
-```python3.10 -m venv .venvCalib```
+```
+python3.10 -m venv .venvCalib
+```
 
 Activate the virtual environment:
-```source .venvCalib/bin/activate```
+```
+source .venvCalib/bin/activate
+```
 
 Install the dependecies:
-```pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio torchgeometry xformers ncps```
+```
+pip install PyYAML pykitti opencv-python open3d neuralnet_pytorch imageio torchgeometry xformers ncps
+```
 
 Pytorch:
-```pip3 install torch torchvision torchaudio```
+```
+pip3 install torch torchvision torchaudio
+```
 
 To get the DINOV2 model clone the repository in the current directory: 
-```git clone ```
+```
+git clone https://github.com/cm090999/dinov2.git
+```
 Install Cuda dependencies
-```pip install --extra-index-url https://pypi.nvidia.com cuml_cu11```
+```
+pip install --extra-index-url https://pypi.nvidia.com cuml_cu11
+```
 Navigate into the dinov2 directory and install:
-```cd dinov2```
-```pip install .```
+```
+cd dinov2
+```
+```
+pip install .
+```
 
-A reduced dataset:
-```https://polybox.ethz.ch/index.php/s/RNxImcBiUB1r3gX```
+Run Test with the desired arguments:
+```
+python test.py --inner_iter=1 --skip_frame=1 --pcd_sample=-1 --num_workers=4
+```
 
-Run Test:
-```python test.py --inner_iter=1 --pretrained=./checkpoint/cam2_oneiter_best.pth --skip_frame=1 --pcd_sample=-1 --num_workers=4```
+## Get Datasets
+Download and setup the dataset with the following links:
+
+ONCE: https://once-for-auto-driving.github.io/download.html
+KITTI: https://www.cvlibs.net/datasets/kitti/eval_odometry.php
+
+If the datasets are available in other locations on your device you can define the directory in dataset_paths.yml.
+
+## Run with scripts
+
+Multiple models can be trained or tested with the provided scripts:
+```
+bash scripts/run_training.bash
+```
+
+## Models
+- CalibNet: Original CalibNet
+- CalibNet_DINOV2: CalibNet CLS
+- CalibNet_DINOV2_patch: CalibNet + DINOv2 RGB feature extractor + DFuseNet Depth feature extractor + Custom Aggregation
+- CalibNet_DINOV2_patch_CalAgg: CalibNet + DINOv2 RGB feature extractor + DFuseNet Depth feature extractor
+- CalibNet_DINOV2_patch_RGB: CalibNet + DINOv2 RGB feature extractor + Custom Aggregation
+- CalibNet_DINOV2_patch_RGB_CalAgg: CalibNet + DINOv2 RGB feature extractor
+
+
+# Original Readme:  
 
 # CalibNet_pytorch: Pytorch implementation of CalibNet
 
