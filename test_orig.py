@@ -23,9 +23,9 @@ def options():
     parser.add_argument("--skip_frame",type=int,default=10,help='skip frame of dataset')
     parser.add_argument("--pcd_sample",type=int,default=10000) # -1 means total sample
     parser.add_argument("--max_deg",type=float,default=10)  # 10deg in each axis  (see the paper)
-    parser.add_argument("--max_tran",type=float,default=0)   # 0.2m in each axis  (see the paper)
+    parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
-    parser.add_argument("--randomCrop",type=float,default=1.0) # None or float in (0,1)
+    parser.add_argument("--randomCrop",type=float,default=1.0) # 1.0 for no random crop, <1.0 for random crop (fraction that the new image size will be)
     parser.add_argument("--perturbationaxes",type=str,default='1,1,1,1,1,1') # Enable 1 or disable 0 perturbation in all directions, rotx(pitch), roty(yaw), rotz(roll) , tslx, tsly, tslz,  camera image coordinates
     parser.add_argument("--pertFile",type=str,default='test_seq.csv')
     parser.add_argument("--singlePerturbation", type=bool, default=False)
@@ -37,17 +37,17 @@ def options():
     parser.add_argument("--finetune_tsl",type=bool,default=False)
     # schedule
     parser.add_argument("--device",type=str,default='cuda:0')
-    parser.add_argument("--pretrained",type=str,default='checkpoint/download_finetuned_no_randomCrop_ch_best.pth') # checkpoint/download.pth # checkpoint/CalibNet_DINOV2_patch_no_randomCrop_ch_best.pth # checkpoint/download_finetuned_no_randomCrop_ch_best.pth
+    parser.add_argument("--pretrained",type=str,default='checkpoint/CalibNet_DINOV2_patch_fixed_perturbation_last.pth') # checkpoint/download.pth # checkpoint/CalibNet_DINOV2_patch_no_randomCrop_ch_best.pth # checkpoint/download_finetuned_no_randomCrop_ch_best.pth
     parser.add_argument("--log_dir",default='log/')
     parser.add_argument("--checkpoint_dir",type=str,default="checkpoint/")
     parser.add_argument("--res_dir",type=str,default='res/')
     parser.add_argument("--name",type=str,default='cam2_oneiter')
-    parser.add_argument("--model_name", type=str,default = 'CalibNet', choices=['CalibNet', 'CalibNet_DINOV2', 'CalibNet_DINOV2_patch','CalibNet_DINOV2_patch_RGB', 'CalibNet_DINOV2_LTC','CalibNet_DINOV2_patch_RGB_CalAgg', 'CalibNet_DINOV2_patch_CalAgg'])
+    parser.add_argument("--model_name", type=str,default = 'CalibNet_DINOV2_patch', choices=['CalibNet', 'CalibNet_DINOV2', 'CalibNet_DINOV2_patch','CalibNet_DINOV2_patch_RGB', 'CalibNet_DINOV2_LTC','CalibNet_DINOV2_patch_RGB_CalAgg', 'CalibNet_DINOV2_patch_CalAgg'])
     parser.add_argument("--depth_modality", type = str, default = 'depthimage', choices=['depthimage', 'rangeimage'])
     parser.add_argument("--visualize", type = bool, default = False)
 
     # setting
-    parser.add_argument("--inner_iter",type=int,default=4,help='inner iter of calibnet')
+    parser.add_argument("--inner_iter",type=int,default=1,help='inner iter of calibnet')
     # if CUDA is out of memory, please reduce batch_size, pcd_sample or inner_iter
     return parser.parse_args()
 

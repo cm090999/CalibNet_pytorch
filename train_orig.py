@@ -23,12 +23,12 @@ def options():
     parser.add_argument("--config",type=str,default='config.yml')
     parser.add_argument("--dataset_path",type=str,default='KITTI_Odometry_Full/')
     parser.add_argument("--skip_frame",type=int,default=10,help='skip frame of dataset')
-    parser.add_argument("--pcd_sample",type=int,default=4096)
+    parser.add_argument("--pcd_sample",type=int,default=10000)
     parser.add_argument("--max_deg",type=float,default=10)  # 10deg in each axis  (see the paper)
     parser.add_argument("--max_tran",type=float,default=0.2)   # 0.2m in each axis  (see the paper)
     parser.add_argument("--mag_randomly",type=bool,default=True)
     parser.add_argument("--randomCrop",type=float,default=1.0)
-    parser.add_argument("--singlePerturbation", type=bool, default=True)
+    parser.add_argument("--singlePerturbation", type=bool, default=False)
 
     # dataloader
     parser.add_argument("--batch_size",type=int,default=6) ##############################)

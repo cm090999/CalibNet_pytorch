@@ -56,6 +56,12 @@ Clone the following repository and follow the setup in the respective readme:
 git clone https://github.com/cm090999/PyTorchEMD.git
 ```
 
+## Get pre trained depth feature extractor from DFuseNet
+Go to the DFuseNet repository: https://github.com/ShreyasSkandanS/DFuseNet.git. Download the weights and place them in this repository:
+```
+pretrained_depth/best_model.pth.tar
+```
+
 
 ## Run with scripts
 
