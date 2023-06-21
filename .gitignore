@@ -13,3 +13,4 @@ pretrained_depth
 visualizations
 
 *.npy
+.vscode
