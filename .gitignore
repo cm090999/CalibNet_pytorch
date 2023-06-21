@@ -10,8 +10,10 @@ ONCE
 visualisation_test
 *.html
 pretrained_depth
+
 visualizations/*
 !visualizations/.gitkeep 
+
 *.npy
 .vscode
 
