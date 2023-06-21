@@ -81,9 +81,6 @@ def test(args,chkpt:dict,test_loader):
     zero_res_npy_euler = np.zeros([len(test_loader),6])
 
     ## Store stats 
-    # # Intermediate Layers 
-    # rgb_dinov2 = np.zeros([len(test_loader),384])
-    # dep_dinov2 = np.zeros([len(test_loader),384])
     # Decalibration
     igt_npy = np.zeros([len(test_loader),4,4])
     # Model Output 
@@ -103,7 +100,7 @@ def test(args,chkpt:dict,test_loader):
         igt = batch['igt'].to(device)
         img_shape = rgb_img.shape[-2:]
         depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
-        # model(rgb_img,uncalibed_depth_img)
+
         miscal_pcd = uncalibed_pcd
         g0 = torch.eye(4).repeat(B,1,1).to(device)
         for _ in range(args.inner_iter):
@@ -126,10 +123,9 @@ def test(args,chkpt:dict,test_loader):
                 uncalibed_depth_img, uncalibed_pcd = depth_generator(extran, uncalibed_pcd)
                 finetune = 1
 
-            # uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
             g0 = extran.bmm(g0)
         dg = g0.bmm(igt)
-        rot_dx,tsl_dx = loss_utils.gt2euler(dg.squeeze(0).cpu().detach().numpy()) # cv2.Rodrigues(dg.squeeze(0).cpu().detach().numpy()[:3, :3])[0], dg.squeeze(0).cpu().detach().numpy()[:3, 3]
+        rot_dx,tsl_dx = loss_utils.gt2euler(dg.squeeze(0).cpu().detach().numpy())
         rot_dx = rot_dx.reshape(-1)
         tsl_dx = tsl_dx.reshape(-1)
         res_npy_euler[i,:] = np.abs(np.concatenate([rot_dx,tsl_dx]))
@@ -144,7 +140,7 @@ def test(args,chkpt:dict,test_loader):
         xident = xident.reshape((1,4,4))
         ident = xident.repeat(B, 1, 1)
         d_id = ident.bmm(igt)
-        zero_rot_dx,zero_tsl_dx = loss_utils.gt2euler(d_id.squeeze(0).cpu().detach().numpy()) # cv2.Rodrigues(d_id.squeeze(0).cpu().detach().numpy()[:3, :3])[0], d_id.squeeze(0).cpu().detach().numpy()[:3, 3]  
+        zero_rot_dx,zero_tsl_dx = loss_utils.gt2euler(d_id.squeeze(0).cpu().detach().numpy())
         zero_rot_dx = zero_rot_dx.reshape(-1)
         zero_tsl_dx = zero_tsl_dx.reshape(-1)
         zero_res_npy_euler[i,:] = np.abs(np.concatenate([zero_rot_dx,zero_tsl_dx]))
@@ -184,8 +180,6 @@ def test(args,chkpt:dict,test_loader):
             tf_mat_output[j+b,:] =  np.abs(np.concatenate([out_rot_dx,out_tsl_dx]))
         j+=batch['igt'].size(0)
 
-    # np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name+'rgb_dinov2'))),rgb_dinov2)
-    # np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name+'dep_dinov2'))),dep_dinov2)
     np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name+'igt_npy'))),igt_npy)
     np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name+'recalib_npy'))),recalib_npy)
     np.save(os.path.join(os.path.join(args.res_dir,'{name}.npy'.format(name=args.name+'res_npy'))),res_npy_euler)

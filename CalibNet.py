@@ -3,8 +3,9 @@ from torch import nn
 import torch.nn.functional as F
 from Modules import resnet18
 import numpy as np
+from ncps.torch import LTC
+from ncps.wirings import AutoNCP
 
-# from dinov2.dinov2.models.vision_transformer import vit_small
 from dinov2.models.vision_transformer import vit_small
 
 class Aggregation(nn.Module):
@@ -62,6 +63,10 @@ class CalibNet(nn.Module):
             nn.MaxPool2d(kernel_size=5,stride=1,padding=2),  # outplanes = 256
             resnet18(inplanes=1,planes=32),
         )
+
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
         self.aggregation = Aggregation(inplanes=512+256,planes=96)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         if backbone_pretrained:
@@ -74,6 +79,10 @@ class CalibNet(nn.Module):
         x2 /= self.scale
         x1 = self.rgb_resnet(x1)[-1]
         x2 = self.depth_resnet(x2)[-1]
+        
+        x1 = self.rgb_features(x1)
+        x2 = self.depth_features(x2)
+
         feat = torch.cat((x1,x2),dim=1)  # [B,C1+C2,H,W]
         x_rot, x_tr =  self.aggregation(feat)
         return x_rot, x_tr
@@ -82,8 +91,6 @@ class CalibNet_DINOV2(nn.Module):
     def __init__(self,backbone_pretrained=False,depth_scale=100.0):
         super(CalibNet_DINOV2,self).__init__()
         self.scale = depth_scale
-
-        # self.backbone = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')
 
         self.backbone = vit_small(patch_size=14,
                                     img_size=526,
@@ -137,8 +144,6 @@ class CalibNet_DINOV2(nn.Module):
         depth_3[:, 2, :, :] = depth[:, 0, :, :]
 
         # resize input
-        # rgb_res = resizeToMultiple(rgb,14)
-        # depth_res = resizeToMultiple(depth_3,14)
         x1,x2 = rgb,depth_3.clone()  # clone dpeth, or it will change depth in '/' operation
         x2 /= self.scale
 
@@ -174,13 +179,13 @@ class CalibNet_DINOV2(nn.Module):
         return x_rot, x_tr
 
 class Aggregate_Patches(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self,inrgb=384,indepth=192) -> None:
         super(Aggregate_Patches, self).__init__()
-        self.conv0rgb = nn.Conv2d(in_channels=384, out_channels=256, kernel_size=3, padding=1)
+        self.conv0rgb = nn.Conv2d(in_channels=inrgb, out_channels=256, kernel_size=3, padding=1)
         self.conv1rgb = nn.Conv2d(in_channels=256, out_channels=192, kernel_size=3, padding=1)
         self.conv2rgb = nn.Conv2d(in_channels=192, out_channels=128, kernel_size=3, padding=1)
 
-        self.conv0depth = nn.Conv2d(in_channels=192, out_channels=168, kernel_size=3, padding=1)
+        self.conv0depth = nn.Conv2d(in_channels=indepth, out_channels=168, kernel_size=3, padding=1)
         self.conv1depth = nn.Conv2d(in_channels=168, out_channels=156, kernel_size=3, padding=1)
         self.conv2depth = nn.Conv2d(in_channels=156, out_channels=128, kernel_size=3, padding=1)
 
@@ -192,17 +197,15 @@ class Aggregate_Patches(nn.Module):
 
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=32, kernel_size=3, padding=1)
 
-        self.adaptmaxpool = nn.AdaptiveAvgPool2d((5,5))
-
         self.fc1 = nn.Linear(2*384, 256)
 
-        self.fc1_t = nn.Linear(32*5*5, 512)
+        self.fc1_t = nn.Linear(1344, 512)
         self.layerNorm_tr1 = nn.LayerNorm(512)
         self.dropout1t = nn.Dropout(p=0.2)
         self.fc2_t = nn.Linear(512,128)
         self.fc3_t = nn.Linear(128, 3)
 
-        self.fc1_r = nn.Linear(32*5*5, 512)
+        self.fc1_r = nn.Linear(1344, 512)
         self.layerNorm_rot1 = nn.LayerNorm(512)
         self.dropout1r = nn.Dropout(p=0.2)
         self.fc2_r = nn.Linear(512,128)
@@ -213,6 +216,7 @@ class Aggregate_Patches(nn.Module):
         
     
     def forward(self, rgb_patches, depth_patches):
+        bt = rgb_patches.shape[0]
         x1 = self.conv0rgb(rgb_patches)
         x1 = self.relu(x1)
         x1 = self.conv1rgb(x1)
@@ -233,29 +237,14 @@ class Aggregate_Patches(nn.Module):
         x = self.conv2(x)
         x = self.maxpool1(x)
 
-        x = self.conv3(x)
-        x = self.maxpool2(x)
-
-
-
-        x = self.adaptmaxpool(x)
-
-        x = x.reshape(x.shape[0], -1)
-
-        # cls = torch.cat((cls_embedd_rgb, cls_embedd_depth), dim=1)
-
-        # cls = self.fc1(cls)
-
-        # total = torch.cat((cls,x), dim=1)
+        x = spatial_pyramid_pool(x,bt,[int(x.size(2)),int(x.size(3))],[4,2,1])
 
         tr1 = self.fc1_t(x)
-        # tr1 = self.layerNorm_tr1(tr1)
         tr1 = self.dropout1t(tr1)
         tr1 = self.fc2_t(tr1)
         tr = self.fc3_t(tr1)
 
         rot1 = self.fc1_r(x)
-        # rot1 = self.layerNorm_rot1(rot1)
         rot1 = self.dropout1r(rot1)
         rot1 = self.fc2_r(rot1)
         rot = self.fc3_r(rot1)
@@ -265,6 +254,91 @@ class Aggregate_Patches(nn.Module):
 class CalibNet_DINOV2_patch(nn.Module):
     def __init__(self,backbone_pretrained=False,depth_scale=100.0):
         super(CalibNet_DINOV2_patch,self).__init__()
+        self.scale = depth_scale
+        self.patch_size = 14
+ 
+        self.backbone = vit_small(patch_size=self.patch_size,
+                                    img_size=526,
+                                    init_values=1.0,
+                                    block_chunks=0
+                                )
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        self.backbone.eval()
+        state_dict = torch.hub.load_state_dict_from_url(url='https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth')
+        self.backbone.load_state_dict(state_dict, strict=True)
+
+        self.depth_pretrained = FeatureExtractDepth()
+        pretrained_dict = torch.load('pretrained_depth/best_model.pth.tar')['state_dict'] 
+        filtered_dict = {k: v for k, v in pretrained_dict.items() if 'FeatureExtractDepth.' in k}
+        filtered_dict = {k.replace('FeatureExtractDepth.', ''): v for k, v in filtered_dict.items() if 'FeatureExtractDepth.' in k}
+        model_dict = self.depth_pretrained.state_dict()
+        # 1. filter out unnecessary keys
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if any(k in 'FeatureExtractDepth.'+i for i in model_dict)} #'FeatureExtractorDepth.'+model_dict 
+        # 2. overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict) 
+        # 3. load the new state dict
+        self.depth_pretrained.load_state_dict(filtered_dict)
+
+        self.depth_aptmaxpool = None
+
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
+        self.dropout_rgb_feat = nn.Dropout2d(p=0.2)
+        self.dropout_dep_feat = nn.Dropout2d(p=0.2)        
+
+        self.aggregation = Aggregate_Patches()
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
+
+        return
+    
+    def forward(self,rgb:torch.Tensor,depth:torch.Tensor):
+        # rgb: [B,3,H,W]
+        # depth: [B,1,H,W]
+
+        bt,c,hd,wd = depth.size()
+
+        hp = hd // self.patch_size
+        wp = wd // self.patch_size
+
+        self.depth_aptmaxpool = nn.AdaptiveMaxPool2d((hp, wp))
+
+        x1,x2 = rgb,depth.clone()  # clone dpeth, or it will change depth in '/' operation
+        x2 /= self.scale
+
+        x1 = x1.to(self.device)
+        x2 = x2.to(self.device)
+
+        rgb_att = self.backbone.forward_features(x1)
+        rgb_patch_att_ = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
+        batch,embedd, _ = rgb_patch_att_.shape
+        rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
+
+        depth_patch_att_1, depth_patch_att_2, depth_patch_att_3, depth_patch_att_4, depth_patch_att_5 = self.depth_pretrained(x2.to(self.device))
+
+        depth_patch_att = torch.cat((depth_patch_att_1,
+                                depth_patch_att_2,
+                                depth_patch_att_3,
+                                depth_patch_att_4,
+                                depth_patch_att_5), 1)
+        depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
+
+        rgb_patch_att = self.rgb_features(rgb_patch_att)
+        depth_patch_att = self.depth_features(depth_patch_att)
+
+        rgb_patch_att = self.dropout_rgb_feat(rgb_patch_att)
+        depth_patch_att = self.dropout_dep_feat(depth_patch_att)
+
+
+        return self.aggregation(rgb_patch_att, depth_patch_att)
+    
+
+class CalibNet_DINOV2_LTC(nn.Module):
+    def __init__(self,backbone_pretrained=False,depth_scale=100.0):
+        super(CalibNet_DINOV2_LTC,self).__init__()
         self.scale = depth_scale
         self.patch_size = 14
 
@@ -292,18 +366,35 @@ class CalibNet_DINOV2_patch(nn.Module):
         filtered_dict = {k: v for k, v in pretrained_dict.items() if 'FeatureExtractDepth.' in k}
         filtered_dict = {k.replace('FeatureExtractDepth.', ''): v for k, v in filtered_dict.items() if 'FeatureExtractDepth.' in k}
 
-
         model_dict = self.depth_pretrained.state_dict()
 
-        # 1. filter out unnecessary keys
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if any(k in 'FeatureExtractDepth.'+i for i in model_dict)} #'FeatureExtractorDepth.'+model_dict 
-        # 2. overwrite entries in the existing state dict
-        model_dict.update(pretrained_dict) 
-        # 3. load the new state dict
+        model_dict.update(pretrained_dict)
         self.depth_pretrained.load_state_dict(filtered_dict)
-        
 
-        self.aggregation = Aggregate_Patches()
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
+        self.dropout_rgb_feat = nn.Dropout2d(p=0.2)
+        self.dropout_dep_feat = nn.Dropout2d(p=0.2)        
+
+        self.conv_hspp = nn.Conv2d(in_channels=384+192, out_channels=256, kernel_size=4)
+
+        wiring = AutoNCP(1024, 512)  # 16 units, 1 motor neuron
+
+        self.ltc = LTC(8960, wiring, batch_first=True)
+
+        self.fcc1 = nn.Linear(512,256)
+        self.dropout_fcc1 = nn.Dropout(p=0.2)
+        self.relu_fcc1 = nn.ReLU()
+        self.fcc2 = nn.Linear(256,192)
+        self.dropout_fcc2 = nn.Dropout(p=0.2)
+        self.relu_fcc2 = nn.ReLU()
+        self.fcc3 = nn.Linear(192,128)
+        self.relu_fcc3 = nn.ReLU()
+
+        self.fcc_r = nn.Linear(128,3)
+        self.fcc_t = nn.Linear(128,3)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
@@ -314,41 +405,25 @@ class CalibNet_DINOV2_patch(nn.Module):
         # rgb: [B,3,H,W]
         # depth: [B,1,H,W]
 
-        # dp = self.depth_pretrained(depth.to(self.device))
-
-        # add 2 channels to depth image
         bt,c,hd,wd = depth.size()
-        if c ==1:
-            depth_3 = torch.zeros((bt,3,hd,wd))
-        depth_3[:, 0, :, :] = depth[:, 0, :, :]
-        depth_3[:, 1, :, :] = depth[:, 0, :, :]
-        depth_3[:, 2, :, :] = depth[:, 0, :, :]
 
         hp = hd // self.patch_size
         wp = wd // self.patch_size
 
         self.depth_aptmaxpool = nn.AdaptiveMaxPool2d((hp, wp))
 
-        x1,x2 = rgb,depth_3.clone()  # clone dpeth, or it will change depth in '/' operation
+        x1,x2 = rgb,depth.clone()  # clone dpeth, or it will change depth in '/' operation
         x2 /= self.scale
 
         x1 = x1.to(self.device)
         x2 = x2.to(self.device)
 
         rgb_att = self.backbone.forward_features(x1)
-        rgb_patch_att = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
-        batch,embedd, _ = rgb_patch_att.shape
-        rgb_patch_att = torch.reshape(rgb_patch_att, (batch, embedd, hp, wp))
-        rgb_cls_att = rgb_att['x_norm_clstoken'] 
+        rgb_patch_att_ = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
+        batch,embedd, _ = rgb_patch_att_.shape
+        rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
 
-        # depth_att = self.backbone.forward_features(x2)
-        # depth_patch_att = depth_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
-        # batch,embedd, _ = depth_patch_att.shape
-        # depth_patch_att = torch.reshape(depth_patch_att, (batch, embedd, hp, wp))
-        # depth_cls_att = depth_att['x_norm_clstoken']
-        # depth_patch_att = self.depth_resnet(depth.to(self.device))[-1]
-        # depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
-        depth_patch_att_1, depth_patch_att_2, depth_patch_att_3, depth_patch_att_4, depth_patch_att_5 = self.depth_pretrained(depth.to(self.device))
+        depth_patch_att_1, depth_patch_att_2, depth_patch_att_3, depth_patch_att_4, depth_patch_att_5 = self.depth_pretrained(x2)
 
         depth_patch_att = torch.cat((depth_patch_att_1,
                                 depth_patch_att_2,
@@ -357,9 +432,288 @@ class CalibNet_DINOV2_patch(nn.Module):
                                 depth_patch_att_5), 1)
         depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
 
+        rgb_patch_att = self.rgb_features(rgb_patch_att)
+        depth_patch_att = self.depth_features(depth_patch_att)
+
+        rgb_patch_att = self.dropout_rgb_feat(rgb_patch_att)
+        depth_patch_att = self.dropout_dep_feat(depth_patch_att)
+
+        feat = torch.cat((rgb_patch_att, depth_patch_att), dim=1)
+
+        feat = self.conv_hspp(feat)
+
+        spp = spatial_pyramid_pool(feat,bt,[int(feat.size(2)),int(feat.size(3))],[5,3,1])
+
+        out,_ = self.ltc(spp)
+
+        out = self.fcc1(out)
+        out = self.dropout_fcc1(out)
+        out = self.relu_fcc1(out)
+        out = self.fcc2(out)
+        out = self.dropout_fcc2(out)
+        out = self.relu_fcc2(out)
+        out = self.fcc3(out)
+        out = self.relu_fcc3(out)
+        rot = self.fcc_r(out)
+        tsl = self.fcc_t(out)
+
+        return rot, tsl
+
+
+class CalibNet_DINOV2_patch_CalAgg(nn.Module):
+    def __init__(self,backbone_pretrained=False,depth_scale=100.0):
+        super(CalibNet_DINOV2_patch_CalAgg,self).__init__()
+        self.scale = depth_scale
+        self.patch_size = 14
+ 
+        self.backbone = vit_small(patch_size=self.patch_size,
+                                    img_size=526,
+                                    init_values=1.0,
+                                    block_chunks=0
+                                )
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        self.backbone.eval()
+
+        state_dict = torch.hub.load_state_dict_from_url(url='https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth')
+        self.backbone.load_state_dict(state_dict, strict=True)
+
+        self.depth_pretrained = FeatureExtractDepth()
+        pretrained_dict = torch.load('pretrained_depth/best_model.pth.tar')['state_dict'] 
+        filtered_dict = {k: v for k, v in pretrained_dict.items() if 'FeatureExtractDepth.' in k}
+        filtered_dict = {k.replace('FeatureExtractDepth.', ''): v for k, v in filtered_dict.items() if 'FeatureExtractDepth.' in k}
+        model_dict = self.depth_pretrained.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if any(k in 'FeatureExtractDepth.'+i for i in model_dict)} #'FeatureExtractorDepth.'+model_dict 
+        model_dict.update(pretrained_dict)
+        self.depth_pretrained.load_state_dict(filtered_dict)
+
+        self.depth_aptmaxpool = None
+
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
+        self.dropout_rgb_feat = nn.Dropout2d(p=0.2)
+        self.dropout_dep_feat = nn.Dropout2d(p=0.2)        
+
+        self.aggregation = Aggregation(inplanes=384+192, planes=96)
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
+
+        return
+    
+    def forward(self,rgb:torch.Tensor,depth:torch.Tensor):
+        
+        bt,c,hd,wd = depth.size()
+
+        hp = hd // self.patch_size
+        wp = wd // self.patch_size
+
+        self.depth_aptmaxpool = nn.AdaptiveMaxPool2d((hp, wp))
+
+        x1,x2 = rgb,depth.clone()  # clone dpeth, or it will change depth in '/' operation
+        x2 /= self.scale
+
+        x1 = x1.to(self.device)
+        x2 = x2.to(self.device)
+
+        rgb_att = self.backbone.forward_features(x1)
+        rgb_patch_att_ = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
+        batch,embedd, _ = rgb_patch_att_.shape
+        rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
+
+        depth_patch_att_1, depth_patch_att_2, depth_patch_att_3, depth_patch_att_4, depth_patch_att_5 = self.depth_pretrained(x2.to(self.device))
+
+        depth_patch_att = torch.cat((depth_patch_att_1,
+                                depth_patch_att_2,
+                                depth_patch_att_3,
+                                depth_patch_att_4,
+                                depth_patch_att_5), 1)
+        depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
+
+        rgb_patch_att = self.rgb_features(rgb_patch_att)
+        depth_patch_att = self.depth_features(depth_patch_att)
+
+        rgb_patch_att = self.dropout_rgb_feat(rgb_patch_att)
+        depth_patch_att = self.dropout_dep_feat(depth_patch_att)
+
+        feat = torch.cat((rgb_patch_att,depth_patch_att),dim=1)
+
+        return self.aggregation(feat)
+    
+
+class CalibNet_DINOV2_patch_RGB_CalAgg(nn.Module):
+    def __init__(self,backbone_pretrained=False,depth_scale=100.0):
+        super(CalibNet_DINOV2_patch_RGB_CalAgg,self).__init__()
+        self.scale = depth_scale
+        self.patch_size = 14
+ 
+        self.backbone = vit_small(patch_size=self.patch_size,
+                                    img_size=526,
+                                    init_values=1.0,
+                                    block_chunks=0
+                                )
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        self.backbone.eval()
+
+        state_dict = torch.hub.load_state_dict_from_url(url='https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth')
+        self.backbone.load_state_dict(state_dict, strict=True)
+
+        self.depth_pretrained = nn.Sequential(
+            nn.MaxPool2d(kernel_size=5,stride=1,padding=2),  # outplanes = 256
+            resnet18(inplanes=1,planes=32),
+        )
+
+        self.depth_aptmaxpool = None
+
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
+        self.dropout_rgb_feat = nn.Dropout2d(p=0.2)
+        self.dropout_dep_feat = nn.Dropout2d(p=0.2)        
+
+        self.aggregation = Aggregation(inplanes=384+256, planes=96)
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
+
+        return
+    
+    def forward(self,rgb:torch.Tensor,depth:torch.Tensor):
+        # add 2 channels to depth image
+        bt,c,hd,wd = depth.size()
+
+        hp = hd // self.patch_size
+        wp = wd // self.patch_size
+
+        self.depth_aptmaxpool = nn.AdaptiveMaxPool2d((hp, wp))
+
+        x1,x2 = rgb,depth.clone()  # clone dpeth, or it will change depth in '/' operation
+        x2 /= self.scale
+
+        x1 = x1.to(self.device)
+        x2 = x2.to(self.device)
+
+        rgb_att = self.backbone.forward_features(x1)
+        rgb_patch_att_ = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
+        batch,embedd, _ = rgb_patch_att_.shape
+        rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
+
+        depth_patch_att = self.depth_pretrained(x2.to(self.device))[-1]
+
+        depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
+
+        rgb_patch_att = self.rgb_features(rgb_patch_att)
+        depth_patch_att = self.depth_features(depth_patch_att)
+
+        rgb_patch_att = self.dropout_rgb_feat(rgb_patch_att)
+        depth_patch_att = self.dropout_dep_feat(depth_patch_att)
+
+        feat = torch.cat((rgb_patch_att,depth_patch_att),dim=1)
+
+        return self.aggregation(feat)
+    
+
+
+class CalibNet_DINOV2_patch_RGB(nn.Module):
+    def __init__(self,backbone_pretrained=False,depth_scale=100.0):
+        super(CalibNet_DINOV2_patch_RGB,self).__init__()
+        self.scale = depth_scale
+        self.patch_size = 14
+ 
+        self.backbone = vit_small(patch_size=self.patch_size,
+                                    img_size=526,
+                                    init_values=1.0,
+                                    block_chunks=0
+                                )
+        for p in self.backbone.parameters():
+            p.requires_grad = False
+        self.backbone.eval()
+        state_dict = torch.hub.load_state_dict_from_url(url='https://dl.fbaipublicfiles.com/dinov2/dinov2_vits14/dinov2_vits14_pretrain.pth')
+        self.backbone.load_state_dict(state_dict, strict=True)
+
+        self.depth_pretrained = nn.Sequential(
+            nn.MaxPool2d(kernel_size=5,stride=1,padding=2),  # outplanes = 256
+            resnet18(inplanes=1,planes=32),
+        )
+
+        self.depth_aptmaxpool = None
+
+        self.rgb_features = nn.Identity()
+        self.depth_features = nn.Identity()
+
+        self.dropout_rgb_feat = nn.Dropout2d(p=0.2)
+        self.dropout_dep_feat = nn.Dropout2d(p=0.2)        
+
+        self.aggregation = Aggregate_Patches(indepth=256)
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
+
+        return
+    
+    def forward(self,rgb:torch.Tensor,depth:torch.Tensor):
+        bt,c,hd,wd = depth.size()
+
+        hp = hd // self.patch_size
+        wp = wd // self.patch_size
+
+        self.depth_aptmaxpool = nn.AdaptiveMaxPool2d((hp, wp))
+
+        x1,x2 = rgb,depth.clone()  # clone dpeth, or it will change depth in '/' operation
+        x2 /= self.scale
+
+        x1 = x1.to(self.device)
+        x2 = x2.to(self.device)
+
+        rgb_att = self.backbone.forward_features(x1)
+        rgb_patch_att_ = rgb_att['x_norm_patchtokens'].permute(0,2,1) # (batch,embeddings,hp*wp)
+        batch,embedd, _ = rgb_patch_att_.shape
+        rgb_patch_att = torch.reshape(rgb_patch_att_, (batch, embedd, hp, wp))
+
+        depth_patch_att = self.depth_pretrained(x2.to(self.device))[-1]
+
+        depth_patch_att = self.depth_aptmaxpool(depth_patch_att)
+
+        rgb_patch_att = self.rgb_features(rgb_patch_att)
+        depth_patch_att = self.depth_features(depth_patch_att)
+
+        rgb_patch_att = self.dropout_rgb_feat(rgb_patch_att)
+        depth_patch_att = self.dropout_dep_feat(depth_patch_att)
+
 
         return self.aggregation(rgb_patch_att, depth_patch_att)
+
+
     
+def spatial_pyramid_pool(previous_conv, num_sample, previous_conv_size, out_pool_size):
+    '''
+    previous_conv: a tensor vector of previous convolution layer
+    num_sample: an int number of image in the batch
+    previous_conv_size: an int vector [height, width] of the matrix features size of previous convolution layer
+    out_pool_size: a int vector of expected output size of max pooling layer
+    
+    returns: a tensor vector with shape [1 x n] is the concentration of multi-level pooling
+    '''    
+    # print(previous_conv.size())
+    for i in range(len(out_pool_size)):
+        # print(previous_conv_size)
+        h_wid = int(np.ceil(previous_conv_size[0] / out_pool_size[i]))
+        w_wid = int(np.ceil(previous_conv_size[1] / out_pool_size[i]))
+        h_pad = (h_wid*out_pool_size[i] - previous_conv_size[0] + 1)//2
+        w_pad = (w_wid*out_pool_size[i] - previous_conv_size[1] + 1)//2
+        maxpool = nn.MaxPool2d((h_wid, w_wid), stride=(h_wid, w_wid), padding=(h_pad, w_pad))
+        x = maxpool(previous_conv)
+        if(i == 0):
+            spp = x.view(num_sample,-1)
+            # print("spp size:",spp.size())
+        else:
+            # print("size:",spp.size())
+            spp = torch.cat((spp,x.view(num_sample,-1)), 1)
+    return spp
+    
+
 
 def ConvBN(in_planes, out_planes, kernel_size, stride, pad, dilation):
     """
@@ -449,28 +803,13 @@ class FeatureExtractDepth(nn.Module):
                op_l32_upsample, op_l64_upsample
 
 
-def resizeToMultiple(image: torch.tensor,mult: int):
-    batch,c,width,height = image.size()
-    heigth_new = ((height // mult) + 1) * mult
-    width_new = ((width // mult) + 1) * mult
-
-    img_new = torch.zeros((batch,c,width_new,heigth_new))
-    
-    img_new[:,:,:width, :height] = image
-    return img_new
-
 if __name__=="__main__":
-    x = (torch.rand(2,3,1246,378),torch.rand(2,1,1246,378))
-    # x_resized = (resizeToMultiple(x[0],14).cuda(), resizeToMultiple(x[0],14).cuda())
+    from torchview import draw_graph
 
-    model_dino = CalibNet_DINOV2_patch().cuda()
-    model_dino.eval()
-    rotationd,translationd = model_dino(*x)
-
-    model = CalibNet(backbone_pretrained=False).cuda()
-    model.eval()
-    rotation,translation = model(*x)
-    print("translation size:{}".format(translation.size()))
-    print("rotation size:{}".format(rotation.size()))
+    model = CalibNet_DINOV2_patch()
+    model_graph = draw_graph(model, input_size = [(2,3,1246,378),(2,1,1246,378)]  ,  expand_nested=True)
+    # model_graph.visual_graph
+    model_graph.resize_graph(scale=5.0) # scale as per the view 
+    model_graph.visual_graph.render(format='svg')
 
 

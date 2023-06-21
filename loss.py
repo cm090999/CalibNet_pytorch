@@ -50,16 +50,6 @@ class ChamferDistanceLoss(nn.Module):
     def forward(self, template, source):
         p0 = template/self.scale
         p1 = source/self.scale
-
-        # squerror = (p0 - p1)**2
-        # squerror = torch.norm(squerror,dim=1) # / torch.norm(p0, dim=1)
-        # squerror = squerror.mean(dim=1)
-        # squerror = squerror.mean(dim=0)
-        # return squerror
-    
-        # chd = chamfer_dist()
-        # dist1, dist2, idx1, idx2 = chd(p0,p1)
-        # loss = (torch.mean(dist1))# + (torch.mean(dist2))
         loss = chamfer_loss(p0,p1,reduce=self.reduction)
         return loss
 

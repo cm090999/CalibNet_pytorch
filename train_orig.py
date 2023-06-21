@@ -95,12 +95,6 @@ def val(args,model,val_loader:DataLoader):
             depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
             # model(rgb_img,uncalibed_depth_img)
             g0 = torch.eye(4).repeat(B,1,1).to(device)
-            # for _ in range(args.inner_iter):
-            #     twist_rot, twist_tsl = model(rgb_img,uncalibed_depth_img)
-            #     extran = utils.se3.exp(torch.cat([twist_rot,twist_tsl],dim=1))
-            #     uncalibed_depth_img, uncalibed_pcd = depth_generator(extran,uncalibed_pcd)
-            #     g0 = extran.bmm(g0)
-
             for _ in range(args.inner_iter):
                     twist_rot, twist_tsl = model(rgb_img, uncalibed_depth_img)
                     extran = utils.se3.exp(torch.cat([twist_rot, twist_tsl], dim=1))
@@ -119,12 +113,6 @@ def val(args,model,val_loader:DataLoader):
                         finetune = 1
 
                     g0 = extran.bmm(g0)
-
-                    # Detach unnecessary tensors
-                    # twist_rot.detach_()
-                    # twist_tsl.detach_()
-                    # extran.detach_()
-
 
             err_g = g0.bmm(igt)
             dR,dT = loss_utils.geodesic_distance(err_g)
@@ -175,18 +163,6 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
         for params in model.backbone.parameters():
             params.requires_grad = False
 
-    # if args.finetune_tsl:
-    #     # Freeze all weights
-    #     for param in model.parameters():
-    #         param.requires_grad = False
-
-    #     # Unfreeze translation layers
-    #     for param in model.aggregation.fc1.parameters():
-    #         param.requires_grad = True
-    #     for param in model.aggregation.tr_conv.parameters():
-    #         param.requires_grad = True
-
-
     model.to(device)
     if args.optim == 'sgd':
         optimizer = torch.optim.SGD(model.parameters(),args.lr0,momentum=args.momentum,weight_decay=args.weight_decay)
@@ -232,7 +208,6 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
     alpha = float(args.alpha)
     
     for epoch in range(start_epoch,args.epoch):
-        # model.train()
         tqdm_console = tqdm(total=len(train_loader),desc='Train')
         total_photo_loss = 0
         total_chamfer_loss = 0
@@ -255,9 +230,8 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 igt = batch['igt'].to(device)
                 img_shape = rgb_img.shape[-2:]
                 depth_generator = utils.transform.DepthImgGenerator(img_shape,InTran,pcd_range,CONFIG['dataset']['pooling'])
-                # model(rgb_img,uncalibed_depth_img)
                 g0 = torch.eye(4).repeat(B,1,1).to(device)
-                # model.eval()
+
                 for _ in range(args.inner_iter):
                     twist_rot, twist_tsl = model(rgb_img, uncalibed_depth_img)
                     extran = utils.se3.exp(torch.cat([twist_rot, twist_tsl], dim=1))
@@ -276,12 +250,6 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                         finetune = 1
 
                     g0 = extran.bmm(g0)
-
-                    # Detach unnecessary tensors
-                    # twist_rot.detach_()
-                    # twist_tsl.detach_()
-                    # extran.detach_()
-
                     
                 dR, dT = loss_utils.geodesic_distance(g0.bmm(igt))
 
@@ -293,21 +261,9 @@ def train(args,chkpt,train_loader:DataLoader,val_loader:DataLoader):
                 calibed_pcd.requires_grad = True
                 loss1 = photo_loss(calibed_depth_img,uncalibed_depth_img)
                 loss2 = chamfer_loss(calibed_pcd,uncalibed_pcd)
-                loss3, loss4 = regression_loss(g0.bmm(igt))
-                loss = alpha*loss1*finetune + beta*loss2 #+ loss3 + loss4*10
-                # loss.backward(retain_graph=True)
+                loss = alpha*loss1*finetune + beta*loss2 
                 nn.utils.clip_grad_value_(model.parameters(),args.clip_grad)
                 loss.backward()
-
-                # twist_gt = utils.se3.log(utils.se3.inverse(igt))
-                # twist_rot_gt = twist_gt[:,:3]
-                # twist_tsl_gt = twist_gt[:,3:]
-                # loss_rot_reg = (abs(twist_rot_gt - twist_rot)).mean(dim=0)
-                # loss_tsl_reg = (abs(twist_tsl_gt - twist_tsl)).mean(dim=0)
-                # rot_mask = torch.ones_like(loss_rot_reg)
-                # tsl_mask = torch.ones_like(loss_tsl_reg)
-                # loss_rot_reg.backward(rot_mask, retain_graph=True)
-                # loss_tsl_reg.backward(tsl_mask)
 
                 optimizer.step()
 
@@ -419,9 +375,7 @@ if __name__ == "__main__":
                                   pooling_size=CONFIG['dataset']['pooling'],
                                   file=trainFile,
                                   singlePerturbation=args.singlePerturbation)
-    
-    # train_dataset = torch.utils.data.Subset(train_dataset, [0,1])
-    
+        
     val_dataset = BaseKITTIDataset(basedir=DATA['kitti_full'],
                                    batch_size=args.batch_size,
                                    seqs=val_split,

@@ -83,8 +83,6 @@ class UniformTransformSE3:
         t = (2*torch.rand(1, 3)-1) # / torch.norm(2*torch.rand(1, 3)-1) * tran
         w = w * amp   / torch.norm(w)
         t = t * tran  / torch.norm(t)
-        # w = w * self.axes[3:]
-        # t = t * self.axes[:3]
 
         # the output: twist vectors.
         R = so3.exp(w) # (N, 3) --> (N, 3, 3)
